@@ -1,0 +1,144 @@
+// Initialisation de Firebase (projet "page-tesla")
+const firebaseConfig = { apiKey: "AIzaSyC...", authDomain: "page-tesla.firebaseapp.com", projectId: "page-tesla", storageBucket: "page-tesla.appspot.com", messagingSenderId: "1234567890", appId: "1:1234567890:web:abc123def456" };
+if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+const db = firebase.firestore();
+
+let isAdmin = false;
+
+document.addEventListener("DOMContentLoaded", function() {
+    // 1. Chargement dynamique du Header et du Footer
+    function loadHTML(id, filename) {
+        fetch(filename)
+            .then(response => {
+                if (!response.ok) throw new Error("Erreur de chargement : " + filename);
+                return response.text();
+            })
+            .then(data => {
+                document.getElementById(id).innerHTML = data;
+                // Si on vient de charger le header, on initialise les éléments liés (comme l'horloge)
+                if (id === 'header-placeholder') {
+                    initHeaderFeatures();
+                }
+            })
+            .catch(error => console.error(error));
+    }
+
+    loadHTML('header-placeholder', 'includes/header.html');
+    loadHTML('footer-placeholder', 'includes/footer.html');
+});
+
+// 2. Gestion du mode Sombre / Clair[cite: 1]
+function toggleDarkMode() {
+    const html = document.documentElement;
+    const icon = document.getElementById('theme-icon');
+    if (html.classList.contains('dark')) {
+        html.classList.remove('dark');
+        localStorage.setItem('theme', 'light');
+        if (icon) icon.innerText = '🌙';
+    } else {
+        html.classList.add('dark');
+        localStorage.setItem('theme', 'dark');
+        if (icon) icon.innerText = '☀️';
+    }
+}
+
+// Application du thème enregistré dès le chargement
+if (localStorage.getItem('theme') === 'light') {
+    document.documentElement.classList.remove('dark');
+} else {
+    document.documentElement.classList.add('dark');
+}
+
+// 3. Fonctionnalités propres au Header (Horloge & Firestore Banderole)[cite: 1]
+function initHeaderFeatures() {
+    // Horloge en direct
+    function updateLiveClock() {
+        const clockEl = document.getElementById('live-clock');
+        if (clockEl) clockEl.innerText = new Date().toLocaleTimeString('fr-FR');
+    }
+    setInterval(updateLiveClock, 1000);
+    updateLiveClock();
+
+    // Synchro temps réel de la banderole via Firestore[cite: 1]
+    db.collection("dashboards").doc("justin_config").onSnapshot((docSnap) => {
+        if (docSnap.exists) {
+            const data = docSnap.data();
+            if (data.bannerText !== undefined) {
+                applyBanner(data.bannerText, data.bannerColor, data.bannerSize, data.bannerEffect, data.bannerSpeed);
+            }
+        } else {
+            applyBanner('Bienvenue Justin !', '#60a5fa', 'text-base', 'normal', '18s');
+        }
+    });
+}
+
+// Rendu de la banderole[cite: 1]
+function applyBanner(text, color, size, effect, speed) {
+    const display = document.getElementById('banner-text-display');
+    if (!display) return;
+    const safeText = text || 'Bienvenue Justin !';
+    display.innerHTML = `<span>${safeText} &nbsp;&nbsp;&nbsp;&nbsp;&bull;&nbsp;&nbsp;&nbsp;&nbsp;</span>`.repeat(6);
+    display.className = `animate-marquee font-medium inline-block ${size || 'text-base'} ${effect === 'rainbow' ? 'text-rainbow' : ''} ${effect === 'neon' ? 'neon-glow' : ''}`;
+    if (effect === 'normal') {
+        display.style.color = color || '#60a5fa';
+    } else {
+        display.style.color = '';
+    }
+    if (speed) {
+        display.style.animationDuration = speed;
+    }
+}
+
+// Gestion des modales de la banderole[cite: 1]
+async function ouvrirModalBandole() {
+    try {
+        let docRef = db.collection("dashboards").doc("justin_config");
+        let docSnap = await docRef.get();
+        let data = docSnap.exists ? docSnap.data() : {};
+        
+        document.getElementById('config-banner-text').value = data.bannerText !== undefined ? data.bannerText : "Bienvenue Justin !";
+        document.getElementById('config-banner-color').value = data.bannerColor || "#60a5fa";
+        document.getElementById('config-banner-size').value = data.bannerSize || "text-base";
+        document.getElementById('config-banner-effect').value = data.bannerEffect || "normal";
+        document.getElementById('config-banner-speed').value = data.bannerSpeed || "18s";
+
+        document.getElementById('banner-modal').classList.remove('hidden');
+    } catch(e) {
+        alert("Erreur lors du chargement des options de la banderole.");
+    }
+}
+
+function fermerModalBandole() {
+    document.getElementById('banner-modal').classList.add('hidden');
+}
+
+async function sauvegarderConfigBanderole() {
+    const bannerText = document.getElementById('config-banner-text').value.trim();
+    const bannerColor = document.getElementById('config-banner-color').value;
+    const bannerSize = document.getElementById('config-banner-size').value;
+    const bannerEffect = document.getElementById('config-banner-effect').value;
+    const bannerSpeed = document.getElementById('config-banner-speed').value;
+
+    try {
+        let docRef = db.collection("dashboards").doc("justin_config");
+        await docRef.set({ bannerText, bannerColor, bannerSize, bannerEffect, bannerSpeed }, { merge: true });
+        fermerModalBandole();
+    } catch(e) {
+        alert("Erreur d'enregistrement de la banderole.");
+    }
+}
+
+// Gestion de la sécurité Admin[cite: 1]
+function ouvrirAuthModal() { document.getElementById('auth-modal').classList.remove('hidden'); }
+function fermerAuthModal() { document.getElementById('auth-modal').classList.add('hidden'); document.getElementById('admin-password').value = ''; }
+
+function verifierAdmin() {
+    const pwd = document.getElementById('admin-password').value;
+    if (pwd === "justin2026" || pwd === "admin") {
+        isAdmin = true;
+        fermerAuthModal();
+        alert("Mode Admin activé !");
+    } else {
+        alert("Mot de passe incorrect.");
+    }
+}

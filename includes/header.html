@@ -1,0 +1,108 @@
+<header class="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-lg relative z-20">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div class="flex items-center space-x-4">
+            <div class="relative w-20 h-12 rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 flex items-center justify-center">
+                <img src="https://cdn-icons-png.flaticon.com/512/3202/3202003.png" alt="Tesla" class="w-10 h-10 object-contain">
+            </div>
+            <div>
+                <h1 class="text-2xl font-bold tracking-wide flex items-center gap-2"><span>Justin</span> <span class="text-xs px-2 py-0.5 rounded bg-blue-600/30 text-blue-600 dark:text-blue-400">Model 3 Highland</span></h1>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+            <div id="live-clock" class="bg-gray-100 dark:bg-gray-950 border border-gray-300 dark:border-gray-800 px-4 py-2 rounded-xl text-sm font-mono text-blue-600 dark:text-blue-400 font-bold shadow-inner">--:--:--</div>
+            <button onclick="toggleDarkMode()" class="p-2 rounded-xl bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700 transition" title="Basculer Mode Jour/Nuit">
+                <span id="theme-icon">☀️</span>
+            </button>
+            <button onclick="ouvrirAuthModal()" class="p-2 rounded-xl bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700 transition" title="Paramètres Admin">
+                <span>⚙️</span>
+            </button>
+        </div>
+
+        <nav class="flex items-center bg-gray-100 dark:bg-gray-950 p-1 rounded-xl border border-gray-300 dark:border-gray-800 flex-wrap justify-center gap-1">
+            <a href="index.html" class="px-4 py-2 text-sm font-medium rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400">Raccourcis</a>
+            <a href="multimedia.html" class="px-4 py-2 text-sm font-medium rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400">Météo & Multimédia</a>
+            <a href="justgo.html" class="px-4 py-2 text-sm font-medium rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 flex items-center gap-1.5"><span>🧭</span> Just go</a>
+            <a href="homeassistant.html" class="px-4 py-2 text-sm font-medium rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 flex items-center gap-1.5"><span>🏠</span> Home Assistant</a>
+        </nav>
+    </div>
+
+    <div class="w-full overflow-hidden bg-gray-100 dark:bg-gray-950 border-t border-b border-gray-200 dark:border-gray-800 py-2 relative group">
+        <div id="banner-container" class="whitespace-nowrap overflow-hidden w-full flex">
+            <div id="banner-text-display" class="animate-marquee font-medium text-blue-600 dark:text-blue-400 inline-block">
+                <span>Bienvenue Justin ! &nbsp;&nbsp;&nbsp;&nbsp;&bull;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+            </div>
+        </div>
+        <button onclick="ouvrirModalBandole()" class="absolute right-2 top-1/2 -translate-y-1/2 opacity-20 hover:opacity-100 transition-opacity bg-gray-800/80 text-white text-xs px-2 py-1 rounded shadow z-10" title="Personnaliser la banderole">
+            ⚙️
+        </button>
+    </div>
+</header>
+
+<!-- Modal de Personnalisation Avancée de la Banderole -->
+<div id="banner-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-6 rounded-2xl shadow-2xl max-w-md w-full flex flex-col gap-4">
+        <h3 class="text-lg font-bold flex items-center gap-2">✨ Personnaliser la Banderole</h3>
+        
+        <div class="flex flex-col gap-1">
+            <label class="text-xs text-gray-500 dark:text-gray-400 font-medium">Texte de la banderole</label>
+            <input type="text" id="config-banner-text" class="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white p-2.5 rounded-lg text-sm w-full outline-none">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+            <div class="flex flex-col gap-1">
+                <label class="text-xs text-gray-500 dark:text-gray-400 font-medium">Couleur (si effet normal)</label>
+                <input type="color" id="config-banner-color" value="#60a5fa" class="h-10 w-full bg-gray-100 dark:bg-gray-700 rounded-lg cursor-pointer p-1">
+            </div>
+            <div class="flex flex-col gap-1">
+                <label class="text-xs text-gray-500 dark:text-gray-400 font-medium">Taille du texte</label>
+                <select id="config-banner-size" class="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white p-2.5 rounded-lg text-sm w-full outline-none">
+                    <option value="text-xs">Très petit</option>
+                    <option value="text-sm">Petit</option>
+                    <option value="text-base" selected>Normal</option>
+                    <option value="text-lg">Grand</option>
+                    <option value="text-xl">Très grand</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+            <div class="flex flex-col gap-1">
+                <label class="text-xs text-gray-500 dark:text-gray-400 font-medium">Jeu de lumière / Effet</label>
+                <select id="config-banner-effect" class="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white p-2.5 rounded-lg text-sm w-full outline-none">
+                    <option value="normal">Normal (Couleur unie)</option>
+                    <option value="rainbow">Arc-en-ciel magique 🌈</option>
+                    <option value="neon">Néon lumineux 💡</option>
+                </select>
+            </div>
+            <div class="flex flex-col gap-1">
+                <label class="text-xs text-gray-500 dark:text-gray-400 font-medium">Vitesse de défilement</label>
+                <select id="config-banner-speed" class="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white p-2.5 rounded-lg text-sm w-full outline-none">
+                    <option value="35s">Très lent</option>
+                    <option value="25s">Lent</option>
+                    <option value="18s" selected>Normal</option>
+                    <option value="10s">Rapide</option>
+                    <option value="5s">Très rapide</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="flex gap-2 mt-2">
+            <button onclick="sauvegarderConfigBanderole()" class="bg-blue-600 hover:bg-blue-700 text-white p-2.5 rounded-lg text-sm flex-1 font-semibold">Appliquer & Enregistrer</button>
+            <button onclick="fermerModalBandole()" class="bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 p-2.5 rounded-lg text-sm flex-1">Annuler</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal d'authentification Admin -->
+<div id="auth-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-6 rounded-2xl shadow-2xl max-w-sm w-full flex flex-col gap-4">
+        <h3 class="text-lg font-bold">🔒 Sécurité Admin</h3>
+        <p class="text-xs text-gray-500 dark:text-gray-400">Entrez le mot de passe pour déverrouiller les options.</p>
+        <input type="password" id="admin-password" placeholder="Mot de passe..." class="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white p-2.5 rounded-lg text-sm w-full outline-none">
+        <div class="flex gap-2">
+            <button onclick="verifierAdmin()" class="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg text-sm flex-1">Valider</button>
+            <button onclick="fermerAuthModal()" class="bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 p-2 rounded-lg text-sm flex-1">Annuler</button>
+        </div>
+    </div>
+</div>
