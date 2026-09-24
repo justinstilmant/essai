@@ -7,106 +7,100 @@
     <script>
         tailwind.config = { darkMode: 'class' }
     </script>
+    <style>
+        @keyframes scrollBanner {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
+        .animate-banner {
+            animation: scrollBanner 20s linear infinite;
+        }
+    </style>
 </head>
 <body class="bg-gray-100 dark:bg-gray-950 text-gray-900 dark:text-white h-screen w-screen overflow-hidden flex flex-col transition-colors">
 
-    <!-- 1. EN-TÊTE DU SITE -->
+    <!-- 1. EN-TÊTE GLOBAL -->
     <header class="bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 px-6 py-3 flex items-center justify-between shadow-md z-20">
-        <div class="flex items-center gap-3">
-            <span class="text-xl">🏠</span>
-            <h1 class="font-bold text-sm tracking-wide">Maison Connectée (Home Assistant)</h1>
+        <div class="flex items-center gap-4">
+            <div class="flex items-center gap-2">
+                <span class="text-xl">🚗</span>
+                <h1 class="font-bold text-sm tracking-wide" id="header-username">Just Go - Maison</h1>
+            </div>
         </div>
-        <div class="flex items-center gap-3">
-            <button onclick="openHaConfigModal()" class="text-xs font-semibold bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"><span>⚙️</span> Configuration</button>
-            <a href="index.html" class="text-xs font-semibold bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 px-3 py-1.5 rounded-lg transition-colors">
-                Accueil
-            </a>
+
+        <div class="flex items-center gap-2">
+            <a href="index.html" class="px-3 py-1.5 rounded-lg bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-xs font-semibold transition-colors">Accueil</a>
+            <a href="justgo.html" class="px-3 py-1.5 rounded-lg bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-xs font-semibold transition-colors">Navigation</a>
+            <a href="homeassistant.html" class="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold transition-colors">Maison</a>
+            <button onclick="openAddButtonModal()" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors">➕ Ajouter un bouton</button>
+            <button onclick="openHaConfigModal()" class="px-3 py-1.5 rounded-lg bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-xs font-semibold transition-colors">⚙️ Config HA</button>
         </div>
     </header>
 
-    <!-- 2. CONTENU PRINCIPAL : GRILLE DE CONTRÔLE -->
+    <!-- 2. BANDEROLE DÉFILANTE -->
+    <div id="banner-container" class="w-full py-1.5 overflow-hidden whitespace-nowrap shadow-inner z-10 transition-colors" style="background-color: #1e293b; color: #ffffff;">
+        <div class="inline-block animate-banner text-xs font-medium px-4" id="banner-text">
+            Bienvenue à bord de votre tableau de bord connecté • Contrôle de la maison en temps réel
+        </div>
+    </div>
+
+    <!-- 3. CONTENU PRINCIPAL : GRILLE DYNAMIQUE DES BOUTONS -->
     <main class="flex-1 p-6 overflow-y-auto flex flex-col gap-6">
         
         <!-- Alerte si non configuré -->
         <div id="ha-warning" class="hidden bg-amber-500/10 border border-amber-500/30 p-4 rounded-2xl flex items-center justify-between">
             <div class="flex items-center gap-3">
                 <span class="text-xl">⚠️</span>
-                <p class="text-xs text-amber-600 dark:text-amber-400 font-medium">Veuillez configurer votre URL Tailscale et votre jeton d'accès API.</p>
+                <p class="text-xs text-amber-600 dark:text-amber-400 font-medium">Veuillez configurer votre URL Tailscale Funnel et votre jeton d'accès API.</p>
             </div>
             <button onclick="openHaConfigModal()" class="bg-amber-600 hover:bg-amber-500 text-white text-xs px-3 py-1.5 rounded-xl font-semibold">Configurer</button>
         </div>
 
-        <!-- Grille des Appareils / Actions Rapides -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" id="devices-grid">
-            
-            <!-- Exemple 1 : Éclairage Salon -->
-            <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-5 rounded-2xl shadow-sm flex flex-col justify-between gap-4">
-                <div class="flex items-center justify-between">
-                    <span class="text-2xl">💡</span>
-                    <span id="status-light-salon" class="text-[10px] font-bold px-2 py-1 rounded-full bg-gray-200 dark:bg-gray-800 text-gray-600 dark:text-gray-400">Chargement...</span>
-                </div>
-                <div>
-                    <h3 class="text-sm font-bold text-gray-900 dark:text-white">Lumière Salon</h3>
-                    <p class="text-xs text-gray-500">Éclairage principal</p>
-                </div>
-                <div class="flex gap-2">
-                    <button onclick="controlerAppareil('light.salon', 'light/turn_on')" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-xl text-xs font-semibold transition-colors">Allumer</button>
-                    <button onclick="controlerAppareil('light.salon', 'light/turn_off')" class="flex-1 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 py-2 rounded-xl text-xs font-semibold transition-colors">Éteindre</button>
-                </div>
-            </div>
-
-            <!-- Exemple 2 : Portail / Porte de Garage -->
-            <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-5 rounded-2xl shadow-sm flex flex-col justify-between gap-4">
-                <div class="flex items-center justify-between">
-                    <span class="text-2xl">🚪</span>
-                    <span id="status-portail" class="text-[10px] font-bold px-2 py-1 rounded-full bg-gray-200 dark:bg-gray-800 text-gray-600 dark:text-gray-400">Prêt</span>
-                </div>
-                <div>
-                    <h3 class="text-sm font-bold text-gray-900 dark:text-white">Portail Extérieur</h3>
-                    <p class="text-xs text-gray-500">Ouverture / Fermeture</p>
-                </div>
-                <div>
-                    <button onclick="controlerAppareil('cover.portail', 'cover/toggle')" class="w-full bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 py-2.5 rounded-xl text-xs font-semibold transition-colors">Basculer (Ouvrir/Fermer)</button>
-                </div>
-            </div>
-
-            <!-- Exemple 3 : Chauffage / Thermostat -->
-            <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-5 rounded-2xl shadow-sm flex flex-col justify-between gap-4">
-                <div class="flex items-center justify-between">
-                    <span class="text-2xl">🌡️</span>
-                    <span id="status-climate" class="text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-500">Actif</span>
-                </div>
-                <div>
-                    <h3 class="text-sm font-bold text-gray-900 dark:text-white">Chauffage Maison</h3>
-                    <p class="text-xs text-gray-500">Mode confort</p>
-                </div>
-                <div class="flex gap-2">
-                    <button onclick="controlerAppareil('climate.maison', 'climate/turn_on')" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-2 rounded-xl text-xs font-semibold transition-colors">Activer</button>
-                    <button onclick="controlerAppareil('climate.maison', 'climate/turn_off')" class="flex-1 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 py-2 rounded-xl text-xs font-semibold transition-colors">Couper</button>
-                </div>
-            </div>
-
+        <!-- Grille injectée dynamiquement -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" id="custom-devices-grid">
+            <!-- Les boutons configurés s'afficheront ici automatiquement -->
         </div>
     </main>
 
-    <!-- Script de gestion API REST Home Assistant -->
+    <!-- Script de gestion et de personnalisation des boutons -->
     <script>
         document.addEventListener("DOMContentLoaded", () => {
+            chargerParametresVisuels();
             verifierConfiguration();
-            chargerEtatsAppareils();
+            chargerBoutonsPersonnalises();
         });
+
+        function chargerParametresVisuels() {
+            const userName = localStorage.getItem('user_name') || 'Justin';
+            const nameEl = document.getElementById('header-username');
+            if (nameEl) nameEl.innerText = `Just Go - ${userName}`;
+
+            const bannerText = localStorage.getItem('banner_text');
+            const bannerBg = localStorage.getItem('banner_bg');
+            const bannerColor = localStorage.getItem('banner_color');
+
+            const bannerEl = document.getElementById('banner-text');
+            const containerEl = document.getElementById('banner-container');
+
+            if (bannerText && bannerEl) bannerEl.innerText = bannerText;
+            if (containerEl) {
+                if (bannerBg) containerEl.style.backgroundColor = bannerBg;
+                if (bannerColor) containerEl.style.color = bannerColor;
+            }
+        }
 
         function verifierConfiguration() {
             const url = localStorage.getItem('ha_url');
             const token = localStorage.getItem('ha_token');
             const warning = document.getElementById('ha-warning');
             if (!url || !token) {
-                warning.classList.remove('hidden');
+                if (warning) warning.classList.remove('hidden');
             } else {
-                warning.classList.add('hidden');
+                if (warning) warning.classList.add('hidden');
             }
         }
 
+        // --- GESTION DE LA CONFIGURATION HA (MODAL) ---
         function openHaConfigModal() {
             let modal = document.getElementById('ha-modal');
             if (!modal) {
@@ -142,25 +136,134 @@
         }
 
         function sauvegarderConfigHA() {
-            const url = document.getElementById('input-ha-url').value.trim().replace(/\/$/, ''); // Supprime le slash de fin si présent
+            const url = document.getElementById('input-ha-url').value.trim().replace(/\/$/, '');
             const token = document.getElementById('input-ha-token').value.trim();
-
             localStorage.setItem('ha_url', url);
             localStorage.setItem('ha_token', token);
-
             document.getElementById('ha-modal').remove();
             verifierConfiguration();
-            chargerEtatsAppareils();
             alert("Configuration enregistrée !");
         }
 
-        // --- ENVOI DE COMMANDE À HOME ASSISTANT ---
-        async function controlerAppareil(entityId, servicePath) {
+        // --- AJOUT ET PERSONNALISATION DES BOUTONS DEPUIS LA PAGE ---
+        function openAddButtonModal() {
+            let modal = document.getElementById('add-btn-modal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'add-btn-modal';
+                modal.className = 'fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4';
+                modal.innerHTML = `
+                    <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 max-w-md w-full shadow-2xl flex flex-col gap-4">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2"><span>➕</span> Ajouter un widget de contrôle</h3>
+                            <button onclick="document.getElementById('add-btn-modal').remove()" class="text-gray-400 hover:text-gray-600 text-sm font-bold">×</button>
+                        </div>
+                        <div class="flex flex-col gap-3 text-xs">
+                            <div class="flex flex-col gap-1">
+                                <label class="font-semibold text-gray-700 dark:text-gray-300">Nom / Titre du bouton</label>
+                                <input type="text" id="widget-name" placeholder="Ex: Portail Entrée" class="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white outline-none">
+                            </div>
+                            <div class="flex flex-col gap-1">
+                                <label class="font-semibold text-gray-700 dark:text-gray-300">Icône (Emoji)</label>
+                                <input type="text" id="widget-icon" value="🚪" class="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white outline-none">
+                            </div>
+                            <div class="flex flex-col gap-1">
+                                <label class="font-semibold text-gray-700 dark:text-gray-300">ID de l'entité Home Assistant</label>
+                                <input type="text" id="widget-entity" placeholder="Ex: cover.portail ou light.salon" class="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white outline-none">
+                            </div>
+                            <div class="flex flex-col gap-1">
+                                <label class="font-semibold text-gray-700 dark:text-gray-300">Type d'action</label>
+                                <select id="widget-service" class="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white outline-none">
+                                    <option value="homeassistant/toggle">Basculer (Toggle On/Off)</option>
+                                    <option value="light/turn_on">Allumer (Lumière)</option>
+                                    <option value="light/turn_off">Éteindre (Lumière)</option>
+                                    <option value="cover/toggle">Ouvrir / Fermer (Portail/Volet)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="flex gap-2 mt-2">
+                            <button onclick="document.getElementById('add-btn-modal').remove()" class="flex-1 bg-gray-200 dark:bg-gray-800 py-2 rounded-lg text-xs font-semibold">Annuler</button>
+                            <button onclick="sauvegarderNouveauBouton()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-2 rounded-lg text-xs font-semibold">Créer le widget</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+            }
+        }
+
+        function sauvegarderNouveauBouton() {
+            const name = document.getElementById('widget-name').value.trim();
+            const icon = document.getElementById('widget-icon').value.trim() || '🏠';
+            const entity = document.getElementById('widget-entity').value.trim();
+            const service = document.getElementById('widget-service').value;
+
+            if (!name || !entity) {
+                alert("Veuillez remplir au moins le nom et l'entité.");
+                return;
+            }
+
+            let boutons = JSON.parse(localStorage.getItem('ha_custom_buttons') || '[]');
+            boutons.push({ id: Date.now(), name, icon, entity, service });
+            localStorage.setItem('ha_custom_buttons', JSON.stringify(boutons));
+
+            document.getElementById('add-btn-modal').remove();
+            chargerBoutonsPersonnalises();
+        }
+
+        function supprimerBouton(id) {
+            if (!confirm("Voulez-vous supprimer ce widget ?")) return;
+            let boutons = JSON.parse(localStorage.getItem('ha_custom_buttons') || '[]');
+            boutons = boutons.filter(b => b.id !== id);
+            localStorage.setItem('ha_custom_buttons', JSON.stringify(boutons));
+            chargerBoutonsPersonnalises();
+        }
+
+        function chargerBoutonsPersonnalises() {
+            const grid = document.getElementById('custom-devices-grid');
+            if (!grid) return;
+
+            let boutons = JSON.parse(localStorage.getItem('ha_custom_buttons') || '[]');
+            
+            // Si aucun bouton n'est configuré, on met un exemple par défaut
+            if (boutons.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full flex flex-col items-center justify-center p-10 text-center border border-dashed border-gray-300 dark:border-gray-800 rounded-2xl gap-3">
+                        <span class="text-3xl">🧩</span>
+                        <h3 class="text-xs font-bold text-gray-700 dark:text-gray-300">Aucun bouton configuré</h3>
+                        <p class="text-[11px] text-gray-500">Cliquez sur "➕ Ajouter un bouton" en haut pour piloter vos premiers équipements.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = '';
+            boutons.forEach(b => {
+                const card = document.createElement('div');
+                card.className = 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-5 rounded-2xl shadow-sm flex flex-col justify-between gap-4 relative group';
+                card.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <span class="text-2xl">${b.icon}</span>
+                        <button onclick="supprimerBouton(${b.id})" class="text-gray-400 hover:text-red-500 text-xs font-bold" title="Supprimer">×</button>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-gray-900 dark:text-white">${b.name}</h3>
+                        <p class="text-[10px] text-gray-500 font-mono">${b.entity}</p>
+                    </div>
+                    <div>
+                        <button onclick="executerAction('${b.entity}', '${b.service}')" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-xl text-xs font-semibold transition-colors shadow-md">Action</button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // --- ENVOI DE LA REQUÊTE À HOME ASSISTANT ---
+        async function executerAction(entityId, servicePath) {
             const haUrl = localStorage.getItem('ha_url');
             const haToken = localStorage.getItem('ha_token');
 
             if (!haUrl || !haToken) {
-                alert("Veuillez d'abord configurer votre URL et votre Jeton.");
+                alert("Veuillez d'abord configurer votre URL et votre Jeton dans le bouton ⚙️ Config HA.");
                 openHaConfigModal();
                 return;
             }
@@ -176,49 +279,13 @@
                 });
 
                 if (response.ok) {
-                    console.log(`Commande ${servicePath} envoyée pour ${entityId}`);
-                    setTimeout(chargerEtatsAppareils, 1000); // Rafraîchit l'état après 1 seconde
+                    console.log(`Action réussie pour ${entityId}`);
                 } else {
-                    alert("Erreur lors de l'exécution de la commande par Home Assistant.");
+                    alert("Erreur: Home Assistant a refusé la commande.");
                 }
             } catch (error) {
                 console.error("Erreur réseau:", error);
-                alert("Impossible de joindre Home Assistant via le Funnel Tailscale.");
-            }
-        }
-
-        // --- CHARGEMENT DES ÉTATS DES APPAREILS ---
-        async function chargerEtatsAppareils() {
-            const haUrl = localStorage.getItem('ha_url');
-            const haToken = localStorage.getItem('ha_token');
-            if (!haUrl || !haToken) return;
-
-            try {
-                const response = await fetch(`${haUrl}/api/states`, {
-                    headers: {
-                        'Authorization': `Bearer ${haToken}`,
-                        'Content-Type': 'application/json',
-                    }
-                });
-
-                if (response.ok) {
-                    const states = await response.json();
-                    
-                    // Exemple de mise à jour dynamique pour les entités de votre choix
-                    states.forEach(entite => {
-                        if (entite.entity_id === 'light.salon') {
-                            const badge = document.getElementById('status-light-salon');
-                            if (badge) {
-                                badge.innerText = entite.state === 'on' ? 'Allumé' : 'Éteint';
-                                badge.className = entite.state === 'on' 
-                                    ? 'text-[10px] font-bold px-2 py-1 rounded-full bg-blue-500/10 text-blue-500' 
-                                    : 'text-[10px] font-bold px-2 py-1 rounded-full bg-gray-200 dark:bg-gray-800 text-gray-500';
-                            }
-                        }
-                    });
-                }
-            } catch (e) {
-                console.warn("Impossible de synchroniser les états Home Assistant", e);
+                alert("Impossible de joindre Home Assistant via le Tailscale Funnel.");
             }
         }
     </script>
