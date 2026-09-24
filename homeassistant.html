@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+$<!DOCTYPE html>
 <html lang="fr" class="dark">
 <head>
     <meta charset="UTF-8">
@@ -32,8 +32,8 @@
             <a href="index.html" class="px-3 py-1.5 rounded-lg bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-xs font-semibold transition-colors">Accueil</a>
             <a href="justgo.html" class="px-3 py-1.5 rounded-lg bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-xs font-semibold transition-colors">Navigation</a>
             <a href="homeassistant.html" class="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold transition-colors">Maison</a>
-            <button onclick="openAddButtonModal()" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors">➕ Ajouter un bouton</button>
-            <button onclick="openHaConfigModal()" class="px-3 py-1.5 rounded-lg bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-xs font-semibold transition-colors">⚙️ Config HA</button>
+            <button onclick="openAddButtonModal()" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors cursor-pointer">➕ Ajouter un bouton</button>
+            <button onclick="openHaConfigModal()" class="px-3 py-1.5 rounded-lg bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-xs font-semibold transition-colors cursor-pointer">⚙️ Config HA</button>
         </div>
     </header>
 
@@ -53,7 +53,7 @@
                 <span class="text-xl">⚠️</span>
                 <p class="text-xs text-amber-600 dark:text-amber-400 font-medium">Veuillez configurer votre URL Tailscale Funnel et votre jeton d'accès API.</p>
             </div>
-            <button onclick="openHaConfigModal()" class="bg-amber-600 hover:bg-amber-500 text-white text-xs px-3 py-1.5 rounded-xl font-semibold">Configurer</button>
+            <button onclick="openHaConfigModal()" class="bg-amber-600 hover:bg-amber-500 text-white text-xs px-3 py-1.5 rounded-xl font-semibold cursor-pointer">Configurer</button>
         </div>
 
         <!-- Grille injectée dynamiquement -->
@@ -62,7 +62,7 @@
         </div>
     </main>
 
-    <!-- Script de gestion et de personnalisation des boutons -->
+    <!-- Script de gestion -->
     <script>
         document.addEventListener("DOMContentLoaded", () => {
             chargerParametresVisuels();
@@ -100,37 +100,37 @@
             }
         }
 
-        // --- GESTION DE LA CONFIGURATION HA (MODAL) ---
+        // --- GESTION CONFIGURATION HA (MODAL) ---
         function openHaConfigModal() {
             let modal = document.getElementById('ha-modal');
-            if (!modal) {
-                modal = document.createElement('div');
-                modal.id = 'ha-modal';
-                modal.className = 'fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4';
-                modal.innerHTML = `
-                    <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 max-w-md w-full shadow-2xl flex flex-col gap-4">
-                        <div class="flex items-center justify-between">
-                            <h3 class="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2"><span>⚙️</span> Configuration Home Assistant</h3>
-                            <button onclick="document.getElementById('ha-modal').remove()" class="text-gray-400 hover:text-gray-600 text-sm font-bold">×</button>
+            if (modal) modal.remove();
+
+            modal = document.createElement('div');
+            modal.id = 'ha-modal';
+            modal.className = 'fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4';
+            modal.innerHTML = `
+                <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 max-w-md w-full shadow-2xl flex flex-col gap-4">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2"><span>⚙️</span> Configuration Home Assistant</h3>
+                        <button onclick="document.getElementById('ha-modal').remove()" class="text-gray-400 hover:text-gray-600 text-sm font-bold cursor-pointer">×</button>
+                    </div>
+                    <div class="flex flex-col gap-3 text-xs">
+                        <div class="flex flex-col gap-1">
+                            <label class="font-semibold text-gray-700 dark:text-gray-300">URL Tailscale Funnel</label>
+                            <input type="text" id="input-ha-url" placeholder="https://votre-machine.ts.net" class="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white outline-none">
                         </div>
-                        <div class="flex flex-col gap-3 text-xs">
-                            <div class="flex flex-col gap-1">
-                                <label class="font-semibold text-gray-700 dark:text-gray-300">URL Tailscale Funnel</label>
-                                <input type="text" id="input-ha-url" placeholder="https://votre-machine.ts.net" class="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white outline-none">
-                            </div>
-                            <div class="flex flex-col gap-1">
-                                <label class="font-semibold text-gray-700 dark:text-gray-300">Jeton d'accès longue durée (Token)</label>
-                                <input type="password" id="input-ha-token" placeholder="eyJhbGciOi..." class="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white outline-none">
-                            </div>
-                        </div>
-                        <div class="flex gap-2 mt-2">
-                            <button onclick="document.getElementById('ha-modal').remove()" class="flex-1 bg-gray-200 dark:bg-gray-800 py-2 rounded-lg text-xs font-semibold">Annuler</button>
-                            <button onclick="sauvegarderConfigHA()" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-lg text-xs font-semibold">Enregistrer</button>
+                        <div class="flex flex-col gap-1">
+                            <label class="font-semibold text-gray-700 dark:text-gray-300">Jeton d'accès longue durée (Token)</label>
+                            <input type="password" id="input-ha-token" placeholder="eyJhbGciOi..." class="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white outline-none">
                         </div>
                     </div>
-                `;
-                document.body.appendChild(modal);
-            }
+                    <div class="flex gap-2 mt-2">
+                        <button onclick="document.getElementById('ha-modal').remove()" class="flex-1 bg-gray-200 dark:bg-gray-800 py-2 rounded-lg text-xs font-semibold cursor-pointer">Annuler</button>
+                        <button onclick="sauvegarderConfigHA()" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-lg text-xs font-semibold cursor-pointer">Enregistrer</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
             document.getElementById('input-ha-url').value = localStorage.getItem('ha_url') || '';
             document.getElementById('input-ha-token').value = localStorage.getItem('ha_token') || '';
         }
@@ -142,53 +142,53 @@
             localStorage.setItem('ha_token', token);
             document.getElementById('ha-modal').remove();
             verifierConfiguration();
-            alert("Configuration enregistrée !");
+            alert("Configuration enregistrée avec succès !");
         }
 
-        // --- AJOUT ET PERSONNALISATION DES BOUTONS DEPUIS LA PAGE ---
+        // --- AJOUT DE BOUTONS (MODAL) ---
         function openAddButtonModal() {
             let modal = document.getElementById('add-btn-modal');
-            if (!modal) {
-                modal = document.createElement('div');
-                modal.id = 'add-btn-modal';
-                modal.className = 'fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4';
-                modal.innerHTML = `
-                    <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 max-w-md w-full shadow-2xl flex flex-col gap-4">
-                        <div class="flex items-center justify-between">
-                            <h3 class="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2"><span>➕</span> Ajouter un widget de contrôle</h3>
-                            <button onclick="document.getElementById('add-btn-modal').remove()" class="text-gray-400 hover:text-gray-600 text-sm font-bold">×</button>
+            if (modal) modal.remove();
+
+            modal = document.createElement('div');
+            modal.id = 'add-btn-modal';
+            modal.className = 'fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4';
+            modal.innerHTML = `
+                <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 max-w-md w-full shadow-2xl flex flex-col gap-4">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2"><span>➕</span> Ajouter un widget de contrôle</h3>
+                        <button onclick="document.getElementById('add-btn-modal').remove()" class="text-gray-400 hover:text-gray-600 text-sm font-bold cursor-pointer">×</button>
+                    </div>
+                    <div class="flex flex-col gap-3 text-xs">
+                        <div class="flex flex-col gap-1">
+                            <label class="font-semibold text-gray-700 dark:text-gray-300">Nom / Titre du bouton</label>
+                            <input type="text" id="widget-name" placeholder="Ex: Portail Entrée" class="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white outline-none">
                         </div>
-                        <div class="flex flex-col gap-3 text-xs">
-                            <div class="flex flex-col gap-1">
-                                <label class="font-semibold text-gray-700 dark:text-gray-300">Nom / Titre du bouton</label>
-                                <input type="text" id="widget-name" placeholder="Ex: Portail Entrée" class="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white outline-none">
-                            </div>
-                            <div class="flex flex-col gap-1">
-                                <label class="font-semibold text-gray-700 dark:text-gray-300">Icône (Emoji)</label>
-                                <input type="text" id="widget-icon" value="🚪" class="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white outline-none">
-                            </div>
-                            <div class="flex flex-col gap-1">
-                                <label class="font-semibold text-gray-700 dark:text-gray-300">ID de l'entité Home Assistant</label>
-                                <input type="text" id="widget-entity" placeholder="Ex: cover.portail ou light.salon" class="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white outline-none">
-                            </div>
-                            <div class="flex flex-col gap-1">
-                                <label class="font-semibold text-gray-700 dark:text-gray-300">Type d'action</label>
-                                <select id="widget-service" class="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white outline-none">
-                                    <option value="homeassistant/toggle">Basculer (Toggle On/Off)</option>
-                                    <option value="light/turn_on">Allumer (Lumière)</option>
-                                    <option value="light/turn_off">Éteindre (Lumière)</option>
-                                    <option value="cover/toggle">Ouvrir / Fermer (Portail/Volet)</option>
-                                </select>
-                            </div>
+                        <div class="flex flex-col gap-1">
+                            <label class="font-semibold text-gray-700 dark:text-gray-300">Icône (Emoji)</label>
+                            <input type="text" id="widget-icon" value="🚪" class="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white outline-none">
                         </div>
-                        <div class="flex gap-2 mt-2">
-                            <button onclick="document.getElementById('add-btn-modal').remove()" class="flex-1 bg-gray-200 dark:bg-gray-800 py-2 rounded-lg text-xs font-semibold">Annuler</button>
-                            <button onclick="sauvegarderNouveauBouton()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-2 rounded-lg text-xs font-semibold">Créer le widget</button>
+                        <div class="flex flex-col gap-1">
+                            <label class="font-semibold text-gray-700 dark:text-gray-300">ID de l'entité Home Assistant</label>
+                            <input type="text" id="widget-entity" placeholder="Ex: cover.portail ou light.salon" class="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white outline-none">
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <label class="font-semibold text-gray-700 dark:text-gray-300">Type d'action</label>
+                            <select id="widget-service" class="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white outline-none">
+                                <option value="homeassistant/toggle">Basculer (Toggle On/Off)</option>
+                                <option value="light/turn_on">Allumer (Lumière)</option>
+                                <option value="light/turn_off">Éteindre (Lumière)</option>
+                                <option value="cover/toggle">Ouvrir / Fermer (Portail/Volet)</option>
+                            </select>
                         </div>
                     </div>
-                `;
-                document.body.appendChild(modal);
-            }
+                    <div class="flex gap-2 mt-2">
+                        <button onclick="document.getElementById('add-btn-modal').remove()" class="flex-1 bg-gray-200 dark:bg-gray-800 py-2 rounded-lg text-xs font-semibold cursor-pointer">Annuler</button>
+                        <button onclick="sauvegarderNouveauBouton()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-2 rounded-lg text-xs font-semibold cursor-pointer">Créer le widget</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
         }
 
         function sauvegarderNouveauBouton() {
@@ -224,7 +224,6 @@
 
             let boutons = JSON.parse(localStorage.getItem('ha_custom_buttons') || '[]');
             
-            // Si aucun bouton n'est configuré, on met un exemple par défaut
             if (boutons.length === 0) {
                 grid.innerHTML = `
                     <div class="col-span-full flex flex-col items-center justify-center p-10 text-center border border-dashed border-gray-300 dark:border-gray-800 rounded-2xl gap-3">
@@ -243,21 +242,20 @@
                 card.innerHTML = `
                     <div class="flex items-center justify-between">
                         <span class="text-2xl">${b.icon}</span>
-                        <button onclick="supprimerBouton(${b.id})" class="text-gray-400 hover:text-red-500 text-xs font-bold" title="Supprimer">×</button>
+                        <button onclick="supprimerBouton(${b.id})" class="text-gray-400 hover:text-red-500 text-xs font-bold cursor-pointer" title="Supprimer">×</button>
                     </div>
                     <div>
                         <h3 class="text-sm font-bold text-gray-900 dark:text-white">${b.name}</h3>
                         <p class="text-[10px] text-gray-500 font-mono">${b.entity}</p>
                     </div>
                     <div>
-                        <button onclick="executerAction('${b.entity}', '${b.service}')" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-xl text-xs font-semibold transition-colors shadow-md">Action</button>
+                        <button onclick="executerAction('${b.entity}', '${b.service}')" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-xl text-xs font-semibold transition-colors shadow-md cursor-pointer">Action</button>
                     </div>
                 `;
                 grid.appendChild(card);
             });
         }
 
-        // --- ENVOI DE LA REQUÊTE À HOME ASSISTANT ---
         async function executerAction(entityId, servicePath) {
             const haUrl = localStorage.getItem('ha_url');
             const haToken = localStorage.getItem('ha_token');
