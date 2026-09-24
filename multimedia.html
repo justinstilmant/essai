@@ -3,11 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mon Dashboard - Météo & Multimédia</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = { darkMode: 'class' }
-    </script>
+    <title>Multimédia - Mon Dashboard</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio,line-clamp"></script>
+    <script> tailwind.config = { darkMode: 'class' } </script>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
     <style>
         @keyframes marquee { 0% { transform: translateX(0%); } 100% { transform: translateX(-50%); } }
         .animate-marquee { display: inline-block; white-space: nowrap; animation: marquee 18s linear infinite; }
@@ -15,270 +18,23 @@
         .text-rainbow { background: linear-gradient(90deg, #60a5fa, #c084fc, #f472b6, #34d399, #60a5fa); background-size: 200% auto; color: transparent; -webkit-background-clip: text; background-clip: text; animation: rainbow-shift 6s linear infinite; }
         @keyframes rainbow-shift { 0% { background-position: 0% center; } 100% { background-position: 200% center; } }
         .neon-glow { text-shadow: 0 0 10px currentColor, 0 0 20px currentColor; }
-        .shortcut-card.dragging { opacity: 0.4; transform: scale(0.95); }
     </style>
 </head>
 <body class="bg-gray-100 dark:bg-gray-950 text-gray-900 dark:text-gray-100 min-h-screen flex flex-col font-sans transition-colors duration-200">
 
-    <header class="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-lg relative z-20">
-        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
-            <div class="flex items-center space-x-4">
-                <div class="relative w-20 h-12 rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 flex items-center justify-center">
-                    <img src="https://cdn-icons-png.flaticon.com/512/3202/3202003.png" alt="Tesla" class="w-10 h-10 object-contain">
-                </div>
-                <div>
-                    <h1 class="text-2xl font-bold tracking-wide flex items-center gap-2"><span>Justin</span> <span class="text-xs px-2 py-0.5 rounded bg-blue-600/30 text-blue-600 dark:text-blue-400">Model 3 Highland</span></h1>
-                </div>
-            </div>
+    <!-- Emplacement réservé pour le Header commun -->
+    <div id="header-placeholder"></div>
 
-            <div class="flex items-center gap-3">
-                <div id="live-clock" class="bg-gray-100 dark:bg-gray-950 border border-gray-300 dark:border-gray-800 px-4 py-2 rounded-xl text-sm font-mono text-blue-600 dark:text-blue-400 font-bold shadow-inner">--:--:--</div>
-                <button onclick="toggleDarkMode()" class="p-2 rounded-xl bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700 transition" title="Basculer Mode Jour/Nuit">
-                    <span id="theme-icon">☀️</span>
-                </button>
-            </div>
-
-            <nav class="flex items-center bg-gray-100 dark:bg-gray-950 p-1 rounded-xl border border-gray-300 dark:border-gray-800 flex-wrap justify-center gap-1">
-                <a href="index.html" class="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg">Raccourcis</a>
-                <a href="multimedia.html" class="px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white shadow">Météo & Multimédia</a>
-                <a href="justgo.html" class="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg flex items-center gap-1.5"><span>🧭</span> Just go</a>
-                <a href="homeassistant.html" class="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg flex items-center gap-1.5"><span>🏠</span> Home Assistant</a>
-            </nav>
-        </div>
-
-        <div class="w-full overflow-hidden bg-gray-100 dark:bg-gray-950 border-t border-b border-gray-200 dark:border-gray-800 py-2 relative">
-            <div id="banner-container" class="whitespace-nowrap overflow-hidden w-full flex">
-                <div id="banner-text-display" class="animate-marquee font-medium text-blue-600 dark:text-blue-400 inline-block">
-                    <span>Bienvenue Justin ! &nbsp;&nbsp;&nbsp;&nbsp;&bull;&nbsp;&nbsp;&nbsp;&nbsp;</span>
-                </div>
-            </div>
-        </div>
-    </header>
-
+    <!-- Contenu spécifique à cette page -->
     <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 flex flex-col gap-6">
-        <h2 class="text-xl font-semibold">Météo & Multimédia</h2>
-        <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6 shadow">
-            <h3 class="text-lg font-medium mb-2">🌤️ Météo Actuelle</h3>
-            <p id="weather-info" class="text-sm text-gray-600 dark:text-gray-400">Chargement de la météo...</p>
-        </div>
-
-        <section class="space-y-4 pt-4">
-            <div class="flex items-center justify-between">
-                <h3 class="text-lg font-semibold">Raccourcis rapides</h3>
-                <button onclick="openShortcutModal()" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-3 py-2 rounded-lg flex items-center gap-1 shadow"><span>+</span> Ajouter</button>
-            </div>
-            <div id="shortcuts-grid-p1" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4"></div>
-        </section>
+        <h2 class="text-xl font-bold">Météo & Multimédia</h2>
+        <p>Contenu spécifique de la page multimédia...</p>
     </main>
 
-    <div id="shortcut-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-        <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-4">
-            <h3 id="modal-title" class="text-lg font-semibold">Ajouter un raccourci</h3>
-            <input type="hidden" id="shortcut-edit-index" value="-1">
-            <div class="space-y-3 text-xs">
-                <div><label class="block text-gray-600 dark:text-gray-400 mb-1">Nom du site</label><input type="text" id="shortcut-name" placeholder="Ex: Spotify..." class="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg p-2.5 text-gray-900 dark:text-white outline-none"></div>
-                <div><label class="block text-gray-600 dark:text-gray-400 mb-1">URL complète</label><input type="url" id="shortcut-url" placeholder="https://..." class="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg p-2.5 text-gray-900 dark:text-white outline-none"></div>
-                <div><label class="block text-gray-600 dark:text-gray-400 mb-1">URL de l'icône / Logo</label><input type="url" id="shortcut-icon" placeholder="https://..." class="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg p-2.5 text-gray-900 dark:text-white outline-none"></div>
-            </div>
-            <div class="flex justify-end gap-2 pt-2">
-                <button onclick="closeShortcutModal()" class="px-4 py-2 bg-gray-200 dark:bg-gray-800 text-xs rounded-lg">Annuler</button>
-                <button onclick="saveShortcut()" class="px-4 py-2 bg-blue-600 text-white text-xs rounded-lg">Enregistrer</button>
-            </div>
-        </div>
-    </div>
+    <!-- Emplacement réservé pour le Footer commun -->
+    <div id="footer-placeholder"></div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-        const firebaseConfig = { apiKey: "AIzaSyC...", authDomain: "page-tesla.firebaseapp.com", projectId: "page-tesla", storageBucket: "page-tesla.appspot.com", messagingSenderId: "1234567890", appId: "1:1234567890:web:abc123def456" };
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const configDocRef = doc(db, "dashboards", "justin_config");
-
-        onSnapshot(configDocRef, (docSnap) => {
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                if (data.shortcutsP1) { 
-                    window.shortcutsP1 = data.shortcutsP1; 
-                    localStorage.setItem('dashboard_shortcuts_p1', JSON.stringify(data.shortcutsP1)); 
-                    window.renderShortcutsForPage(); 
-                }
-                if (data.bannerText !== undefined) { 
-                    applyBanner(data.bannerText, data.bannerColor, data.bannerSize, data.bannerEffect, data.bannerSpeed); 
-                }
-            }
-        });
-
-        window.syncToFirestore = async function() {
-            try { await setDoc(configDocRef, { shortcutsP1: window.shortcutsP1 }, { merge: true }); } catch (err) {}
-        };
-    </script>
-    <script>
-        function toggleDarkMode() {
-            const html = document.documentElement;
-            const icon = document.getElementById('theme-icon');
-            if (html.classList.contains('dark')) {
-                html.classList.remove('dark');
-                localStorage.setItem('theme', 'light');
-                icon.innerText = '🌙';
-            } else {
-                html.classList.add('dark');
-                localStorage.setItem('theme', 'dark');
-                icon.innerText = '☀️';
-            }
-        }
-        if (localStorage.getItem('theme') === 'light') {
-            document.documentElement.classList.remove('dark');
-            document.getElementById('theme-icon').innerText = '🌙';
-        }
-
-        function updateLiveClock() {
-            const clockEl = document.getElementById('live-clock');
-            if (clockEl) clockEl.innerText = new Date().toLocaleTimeString('fr-FR');
-        }
-        setInterval(updateLiveClock, 1000);
-        updateLiveClock();
-
-        async function fetchMeteo() {
-            try {
-                let res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=50.41&longitude=4.44&current_weather=true');
-                let data = await res.json();
-                if (data && data.current_weather) {
-                    document.getElementById('weather-info').innerText = `Température actuelle : ${Math.round(data.current_weather.temperature)}°C`;
-                }
-            } catch(e) { document.getElementById('weather-info').innerText = "Météo non disponible"; }
-        }
-        fetchMeteo();
-
-        function applyBanner(text, color, size, effect, speed) {
-            const display = document.getElementById('banner-text-display');
-            if (!display) return;
-            const safeText = text || 'Bienvenue Justin !';
-            display.innerHTML = `<span>${safeText} &nbsp;&nbsp;&nbsp;&nbsp;&bull;&nbsp;&nbsp;&nbsp;&nbsp;</span>`.repeat(6);
-            display.className = `animate-marquee font-medium inline-block ${size || 'text-base'} ${effect === 'rainbow' ? 'text-rainbow' : ''} ${effect === 'neon' ? 'neon-glow' : ''}`;
-            if (effect === 'normal') {
-                display.style.color = color || '#60a5fa';
-            } else {
-                display.style.color = '';
-            }
-            if (speed) {
-                display.style.animationDuration = speed;
-            }
-        }
-
-        let draggedIndex = null;
-        window.shortcutsP1 = JSON.parse(localStorage.getItem('dashboard_shortcuts_p1')) || [
-            { name: 'Google', url: 'https://www.google.com', icon: 'https://www.google.com/favicon.ico' },
-            { name: 'YouTube', url: 'https://www.youtube.com', icon: 'https://www.youtube.com/favicon.ico' },
-            { name: 'Tesla', url: 'https://www.tesla.com', icon: 'https://www.tesla.com/favicon.ico' }
-        ];
-
-        window.renderShortcutsForPage = function() {
-            const grid = document.getElementById('shortcuts-grid-p1');
-            if (!grid) return;
-            grid.innerHTML = '';
-            window.shortcutsP1.forEach((item, index) => {
-                const card = document.createElement('div');
-                card.draggable = true;
-                card.className = "shortcut-card bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 flex flex-col items-center justify-center gap-3 hover:border-blue-500/50 transition group relative shadow-md cursor-grab active:cursor-grabbing";
-                const iconUrl = item.icon || `https://www.google.com/s2/favicons?domain=${item.url}&sz=64`;
-                
-                let btnLeft = index > 0 ? `<button onclick="deplacerRaccourci(${index}, -1)" class="bg-gray-700 text-white w-5 h-5 rounded-full text-[10px] flex items-center justify-center shadow">◀</button>` : '';
-                let btnRight = index < window.shortcutsP1.length - 1 ? `<button onclick="deplacerRaccourci(${index}, 1)" class="bg-gray-700 text-white w-5 h-5 rounded-full text-[10px] flex items-center justify-center shadow">▶</button>` : '';
-
-                card.innerHTML = `
-                    <div class="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition z-10">
-                        ${btnLeft}
-                        ${btnRight}
-                        <button onclick="openShortcutModal(${index})" class="bg-blue-600 text-white w-5 h-5 rounded-full text-[10px] flex items-center justify-center shadow">✏️</button>
-                        <button onclick="deleteShortcut(event, ${index})" class="bg-red-600 text-white w-5 h-5 rounded-full text-[10px] flex items-center justify-center shadow">✕</button>
-                    </div>
-                    <a href="${item.url}" target="_blank" class="flex flex-col items-center justify-center gap-2 w-full h-full mt-2">
-                        <img src="${iconUrl}" alt="${item.name}" class="w-10 h-10 object-contain rounded-lg pointer-events-none" onerror="this.src='https://cdn-icons-png.flaticon.com/512/1006/1006771.png'">
-                        <span class="text-xs font-medium truncate w-full text-center pointer-events-none">${item.name}</span>
-                    </a>
-                `;
-
-                card.addEventListener('dragstart', () => { draggedIndex = index; card.classList.add('dragging'); });
-                card.addEventListener('dragend', () => { card.classList.remove('dragging'); draggedIndex = null; });
-                card.addEventListener('dragover', (e) => e.preventDefault());
-                card.addEventListener('drop', (e) => {
-                    e.preventDefault();
-                    if (draggedIndex !== null && draggedIndex !== index) {
-                        const moved = window.shortcutsP1.splice(draggedIndex, 1)[0];
-                        window.shortcutsP1.splice(index, 0, moved);
-                        localStorage.setItem('dashboard_shortcuts_p1', JSON.stringify(window.shortcutsP1));
-                        window.renderShortcutsForPage();
-                        if (window.syncToFirestore) window.syncToFirestore();
-                    }
-                });
-                grid.appendChild(card);
-            });
-        };
-
-        window.deplacerRaccourci = function(index, dir) {
-            let target = index + dir;
-            if (target < 0 || target >= window.shortcutsP1.length) return;
-            let tmp = window.shortcutsP1[index];
-            window.shortcutsP1[index] = window.shortcutsP1[target];
-            window.shortcutsP1[target] = tmp;
-            localStorage.setItem('dashboard_shortcuts_p1', JSON.stringify(window.shortcutsP1));
-            window.renderShortcutsForPage();
-            if (window.syncToFirestore) window.syncToFirestore();
-        }
-
-        function openShortcutModal(index = -1) {
-            const modal = document.getElementById('shortcut-modal');
-            const editIndexInput = document.getElementById('shortcut-edit-index');
-            if (index >= 0) {
-                document.getElementById('modal-title').innerText = "Modifier le raccourci";
-                editIndexInput.value = index;
-                document.getElementById('shortcut-name').value = window.shortcutsP1[index].name;
-                document.getElementById('shortcut-url').value = window.shortcutsP1[index].url;
-                document.getElementById('shortcut-icon').value = window.shortcutsP1[index].icon || '';
-            } else {
-                document.getElementById('modal-title').innerText = "Ajouter un raccourci";
-                editIndexInput.value = -1;
-                document.getElementById('shortcut-name').value = '';
-                document.getElementById('shortcut-url').value = '';
-                document.getElementById('shortcut-icon').value = '';
-            }
-            modal.classList.remove('hidden');
-        }
-
-        function closeShortcutModal() { document.getElementById('shortcut-modal').classList.add('hidden'); }
-
-        function saveShortcut() {
-            const name = document.getElementById('shortcut-name').value.trim();
-            let url = document.getElementById('shortcut-url').value.trim();
-            const icon = document.getElementById('shortcut-icon').value.trim();
-            const editIndex = parseInt(document.getElementById('shortcut-edit-index').value);
-            if (!name || !url) return alert("Nom et URL requis.");
-            if (!url.startsWith('http://') && !url.startsWith('https://')) url = 'https://' + url;
-
-            if (editIndex >= 0) { window.shortcutsP1[editIndex] = { name, url, icon }; }
-            else { window.shortcutsP1.push({ name, url, icon }); }
-
-            localStorage.setItem('dashboard_shortcuts_p1', JSON.stringify(window.shortcutsP1));
-            window.renderShortcutsForPage();
-            if (window.syncToFirestore) window.syncToFirestore();
-            closeShortcutModal();
-        }
-
-        function deleteShortcut(e, index) {
-            e.preventDefault(); e.stopPropagation();
-            if (confirm("Supprimer ce raccourci ?")) {
-                window.shortcutsP1.splice(index, 1);
-                localStorage.setItem('dashboard_shortcuts_p1', JSON.stringify(window.shortcutsP1));
-                window.renderShortcutsForPage();
-                if (window.syncToFirestore) window.syncToFirestore();
-            }
-        }
-
-        window.addEventListener('DOMContentLoaded', () => {
-            applyBanner();
-            window.renderShortcutsForPage();
-        });
-    </script>
+    <!-- Script principal partagé -->
+    <script src="js/main.js"></script>
 </body>
 </html>
