@@ -36,6 +36,7 @@ document.addEventListener("DOMContentLoaded", function() {
     loadHTML('header-placeholder', 'includes/header.html');
     loadHTML('footer-placeholder', 'includes/footer.html');
 });
+
 // 2. Gestion du mode Sombre / Clair[cite: 1]
 function toggleDarkMode() {
     const html = document.documentElement;
@@ -85,14 +86,32 @@ function initHeaderFeatures() {
 function applyBanner(text, color, size, effect, speed) {
     const display = document.getElementById('banner-text-display');
     if (!display) return;
+    
     const safeText = text || 'Bienvenue Justin !';
     display.innerHTML = `<span>${safeText} &nbsp;&nbsp;&nbsp;&nbsp;&bull;&nbsp;&nbsp;&nbsp;&nbsp;</span>`.repeat(6);
-    display.className = `animate-marquee font-medium inline-block ${size || 'text-base'} ${effect === 'rainbow' ? 'text-rainbow' : ''} ${effect === 'neon' ? 'neon-glow' : ''}`;
-    if (effect === 'normal') {
-        display.style.color = color || '#60a5fa';
+    
+    // 1. On nettoie les classes d'effets précédentes
+    display.classList.remove('text-rainbow', 'neon-glow');
+    
+    // 2. On applique la base (taille et animation)
+    display.className = `animate-marquee font-medium inline-block ${size || 'text-base'}`;
+    
+    // 3. Gestion spécifique des effets
+    if (effect === 'rainbow') {
+        display.classList.add('text-rainbow');
+        display.style.color = ''; // Nécessaire pour que le gradient s'affiche
+        display.style.removeProperty('color');
+    } else if (effect === 'neon') {
+        display.classList.add('neon-glow');
+        // On force explicitement la couleur avec style.setProperty pour contourner le mode sombre/Tailwind
+        display.style.setProperty('color', color || '#60a5fa', 'important');
     } else {
-        display.style.color = '';
+        // Effet normal
+        display.style.removeProperty('color');
+        display.style.color = color || '#60a5fa';
     }
+
+    // 4. Vitesse de défilement
     if (speed) {
         display.style.animationDuration = speed;
     }
@@ -151,4 +170,3 @@ function verifierAdmin() {
         alert("Mot de passe incorrect.");
     }
 }
-
