@@ -89,22 +89,26 @@ function applyBanner(text, color, size, effect, speed) {
     const safeText = text || 'Bienvenue Justin !';
     display.innerHTML = `<span>${safeText} &nbsp;&nbsp;&nbsp;&nbsp;&bull;&nbsp;&nbsp;&nbsp;&nbsp;</span>`.repeat(6);
     
-    // 1. On réinitialise les classes de base et la taille
+    // 1. On nettoie les classes d'effets précédentes
+    display.classList.remove('text-rainbow', 'neon-glow');
+    
+    // 2. On applique la base (taille et animation)
     display.className = `animate-marquee font-medium inline-block ${size || 'text-base'}`;
     
-    // 2. On gère les effets et la couleur proprement
+    // 3. Gestion spécifique des effets
     if (effect === 'rainbow') {
         display.classList.add('text-rainbow');
-        display.style.color = ''; // On laisse le dégradé CSS s'appliquer
+        display.style.color = ''; // Nécessaire pour que le gradient s'affiche
     } else if (effect === 'neon') {
         display.classList.add('neon-glow');
-        display.style.color = color || '#60a5fa'; // Le néon a besoin d'une couleur de base pour briller
+        // On applique la couleur choisie par l'utilisateur (ou un bleu par défaut) pour que le néon brille avec cette couleur
+        display.style.color = color || '#60a5fa'; 
     } else {
         // Effet normal
         display.style.color = color || '#60a5fa';
     }
 
-    // 3. Vitesse de défilement
+    // 4. Vitesse de défilement
     if (speed) {
         display.style.animationDuration = speed;
     }
