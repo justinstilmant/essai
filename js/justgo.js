@@ -251,3 +251,69 @@ function saveApiKeys() {
     document.getElementById('api-modal').remove();
     alert("Clés API enregistrées avec succès dans le navigateur !");
 }
+// --- GESTION DES FAVORIS (Domicile / Travail) ---
+
+// Configurer l'adresse d'un favori via une invite simple ou une recherche
+async function configurerFavori(type) {
+    const adresseSaisie = prompt(`Entrez l'adresse pour ${type === 'domicile' ? 'le Domicile' : 'le Travail'} :`);
+    if (!adresseSaisie) return;
+
+    try {
+        // Recherche des coordonnées via Nominatim (OSM)
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(adresseSaisie)}`);
+        const data = await res.json();
+
+        if (data && data.length > 0) {
+            const lat = parseFloat(data[0].lat);
+            const lon = parseFloat(data[0].lon);
+            const nomCourt = data[0].display_name.split(',')[0];
+
+            // Sauvegarde dans le localStorage
+            localStorage.setItem(`fav_${type}_name`, nomCourt);
+            localStorage.setItem(`fav_${type}_lat`, lat);
+            localStorage.setItem(`fav_${type}_lon`, lon);
+
+            mettreAJourAffichageFavoris();
+            alert(`${type === 'domicile' ? 'Domicile' : 'Travail'} enregistré avec succès : ${nomCourt}`);
+        } else {
+            alert("Adresse introuvable par le GPS.");
+        }
+    } catch (e) {
+        console.error("Erreur configuration favori", e);
+    }
+}
+
+// Naviguer vers le favori enregistré
+function naviguerVersFavori(type) {
+    const name = localStorage.getItem(`fav_${type}_name`);
+    const lat = parseFloat(localStorage.getItem(`fav_${type}_lat`));
+    const lon = parseFloat(localStorage.getItem(`fav_${type}_lon`));
+
+    if (!name || isNaN(lat) || isNaN(lon)) {
+        // S'il n'est pas configuré, on invite l'utilisateur à le faire directement
+        configurerFavori(type);
+        return;
+    }
+
+    naviguerVers(name, lat, lon);
+}
+
+// Mettre à jour le texte des boutons au chargement de la page
+function mettreAJourAffichageFavoris() {
+    const domName = localStorage.getItem('fav_domicile_name');
+    if (domName) {
+        const el = document.getElementById('label-domicile');
+        if (el) el.innerText = domName;
+    }
+
+    const travName = localStorage.getItem('fav_travail_name');
+    if (travName) {
+        const el = document.getElementById('label-travail');
+        if (el) el.innerText = travName;
+    }
+}
+
+// Lancer la mise à jour des libellés au démarrage dans le DOMContentLoaded ou directement
+document.addEventListener("DOMContentLoaded", () => {
+    mettreAJourAffichageFavoris();
+});

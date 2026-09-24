@@ -51,13 +51,19 @@
             </div>
         </div>
 
-        <div class="flex flex-col gap-2">
-            <button onclick="naviguerVers('Domicile', 50.8503, 4.3517)" class="bg-white/90 dark:bg-gray-900/90 hover:bg-gray-200 dark:hover:bg-gray-800 backdrop-blur border border-gray-300 dark:border-gray-700 px-3 py-1.5 rounded-xl text-xs font-semibold shadow-lg flex items-center gap-1.5 transition-colors">
-                <span>🏠</span> Domicile
-            </button>
-            <button onclick="naviguerVers('Travail', 50.8466, 4.3528)" class="bg-white/90 dark:bg-gray-900/90 hover:bg-gray-200 dark:hover:bg-gray-800 backdrop-blur border border-gray-300 dark:border-gray-700 px-3 py-1.5 rounded-xl text-xs font-semibold shadow-lg flex items-center gap-1.5 transition-colors">
-                <span>💼</span> Travail
-            </button>
+       <div class="flex flex-col gap-2">
+            <div class="flex items-center gap-1">
+                <button onclick="naviguerVersFavori('domicile')" class="flex-1 bg-white/90 dark:bg-gray-900/90 hover:bg-gray-200 dark:hover:bg-gray-800 backdrop-blur border border-gray-300 dark:border-gray-700 px-3 py-1.5 rounded-xl text-xs font-semibold shadow-lg flex items-center gap-1.5 transition-colors">
+                    <span>🏠</span> <span id="label-domicile">Domicile</span>
+                </button>
+                <button onclick="configurerFavori('domicile')" class="bg-white/90 dark:bg-gray-900/90 hover:bg-gray-200 dark:hover:bg-gray-800 backdrop-blur border border-gray-300 dark:border-gray-700 p-1.5 rounded-xl text-xs shadow-lg transition-colors" title="Définir l'adresse">✏️</button>
+            </div>
+            <div class="flex items-center gap-1">
+                <button onclick="naviguerVersFavori('travail')" class="flex-1 bg-white/90 dark:bg-gray-900/90 hover:bg-gray-200 dark:hover:bg-gray-800 backdrop-blur border border-gray-300 dark:border-gray-700 px-3 py-1.5 rounded-xl text-xs font-semibold shadow-lg flex items-center gap-1.5 transition-colors">
+                    <span>💼</span> <span id="label-travail">Travail</span>
+                </button>
+                <button onclick="configurerFavori('travail')" class="bg-white/90 dark:bg-gray-900/90 hover:bg-gray-200 dark:hover:bg-gray-800 backdrop-blur border border-gray-300 dark:border-gray-700 p-1.5 rounded-xl text-xs shadow-lg transition-colors" title="Définir l'adresse">✏️</button>
+            </div>
         </div>
     </div>
 
