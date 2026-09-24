@@ -2,63 +2,72 @@
 <html lang="fr" class="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Home Assistant - Mon Dashboard</title>
-    <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio,line-clamp"></script>
-    <script> tailwind.config = { darkMode: 'class' } </script>
-    <link rel="stylesheet" href="css/style.css">
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
-    <style>
-        @keyframes marquee { 0% { transform: translateX(0%); } 100% { transform: translateX(-50%); } }
-        .animate-marquee { display: inline-block; white-space: nowrap; animation: marquee 18s linear infinite; }
-        .animate-marquee:hover { animation-play-state: paused; }
-        .text-rainbow { background: linear-gradient(90deg, #60a5fa, #c084fc, #f472b6, #34d399, #60a5fa); background-size: 200% auto; color: transparent; -webkit-background-clip: text; background-clip: text; animation: rainbow-shift 6s linear infinite; }
-        @keyframes rainbow-shift { 0% { background-position: 0% center; } 100% { background-position: 200% center; } }
-        .neon-glow { text-shadow: 0 0 10px currentColor, 0 0 20px currentColor; }
-    </style>
-<style>
-    /* Animation de la banderole */
-    @keyframes marquee { 
-        0% { transform: translateX(0%); } 
-        100% { transform: translateX(-50%); } 
-    }
-    .animate-marquee { 
-        display: inline-block; 
-        white-space: nowrap; 
-        animation: marquee 18s linear infinite; 
-    }
-    .animate-marquee:hover { 
-        animation-play-state: paused; 
-    }
-
-    /* Effet Arc-en-ciel corrigé */
-    .text-rainbow { 
-        background: linear-gradient(90deg, #60a5fa, #c084fc, #f472b6, #34d399, #60a5fa); 
-        background-size: 200% auto; 
-        -webkit-background-clip: text; 
-        background-clip: text; 
-        -webkit-text-fill-color: transparent; 
-        animation: rainbow-shift 6s linear infinite, marquee 18s linear infinite; 
-    }
-    @keyframes rainbow-shift { 
-        0% { background-position: 0% center; } 
-        100% { background-position: 200% center; } 
-    }
-
-    /* Effet Néon corrigé */
-    .neon-glow { 
-        text-shadow: 0 0 8px currentColor, 0 0 20px currentColor, 0 0 30px currentColor; 
-    }
-</style>
+    <title>Just Go - Home Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class' }
+    </script>
 </head>
-<body class="bg-gray-100 dark:bg-gray-950 text-gray-900 dark:text-gray-100 min-h-screen flex flex-col font-sans transition-colors duration-200">
-    <div id="header-placeholder"></div>
-    <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 flex flex-col gap-6">
-        <h2 class="text-xl font-bold flex items-center gap-2"><span>🏠</span> Home Assistant</h2>
-        <p>Contenu de la page Home Assistant...</p>
+<body class="bg-gray-100 dark:bg-gray-950 text-gray-900 dark:text-white h-screen w-screen overflow-hidden flex flex-col transition-colors">
+
+    <!-- 1. EN-TÊTE DU SITE -->
+    <header class="bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 px-6 py-3 flex items-center justify-between shadow-md z-20">
+        <div class="flex items-center gap-3">
+            <span class="text-xl">🏠</span>
+            <h1 class="font-bold text-sm tracking-wide">Home Assistant - Contrôle Maison</h1>
+        </div>
+        <div class="flex items-center gap-3">
+            <!-- Bouton pour configurer l'URL de votre Home Assistant -->
+            <button onclick="configurerUrlHA()" class="text-xs font-semibold bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 px-3 py-1.5 rounded-lg transition-colors" title="Changer l'URL Home Assistant">⚙️ URL</button>
+            <a href="index.html" class="text-xs font-semibold bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 px-3 py-1.5 rounded-lg transition-colors">
+                Accueil
+            </a>
+        </div>
+    </header>
+
+    <!-- 2. CONTENEUR IFRAME LOVELACE -->
+    <main class="flex-1 relative bg-white dark:bg-gray-900">
+        <iframe id="ha-iframe" src="" class="w-full h-full border-none" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>
+        
+        <!-- Message de secours si l'URL n'est pas configurée -->
+        <div id="ha-placeholder" class="absolute inset-0 flex flex-col items-center justify-center gap-4 p-6 text-center bg-gray-100 dark:bg-gray-950">
+            <span class="text-4xl">🏡</span>
+            <h2 class="text-base font-bold">Home Assistant n'est pas encore configuré</h2>
+            <p class="text-xs text-gray-500 max-w-sm">Cliquez sur le bouton ci-dessous pour entrer l'adresse IP locale ou externe de votre serveur Home Assistant (ex: http://homeassistant.local:8123).</p>
+            <button onclick="configurerUrlHA()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-xs font-semibold shadow-lg transition-colors">Définir l'URL Home Assistant</button>
+        </div>
     </main>
-    <div id="footer-placeholder"></div>
-    <script src="js/main.js"></script>
+
+    <!-- Script de gestion de l'URL -->
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            chargerIframeHA();
+        });
+
+        function chargerIframeHA() {
+            const url = localStorage.getItem('ha_url');
+            const iframe = document.getElementById('ha-iframe');
+            const placeholder = document.getElementById('ha-placeholder');
+
+            if (url) {
+                iframe.src = url;
+                iframe.classList.remove('hidden');
+                placeholder.classList.add('hidden');
+            } else {
+                iframe.classList.add('hidden');
+                placeholder.classList.remove('hidden');
+            }
+        }
+
+        function configurerUrlHA() {
+            const actuelle = localStorage.getItem('ha_url') || 'http://homeassistant.local:8123';
+            const nouvelleUrl = prompt("Entrez l'URL de votre Home Assistant (ex: http://192.168.1.50:8123 ou votre Nabu Casa) :", actuelle);
+            
+            if (nouvelleUrl) {
+                localStorage.setItem('ha_url', nouvelleUrl.trim());
+                chargerIframeHA();
+            }
+        }
+    </script>
 </body>
 </html>
