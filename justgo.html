@@ -2,63 +2,70 @@
 <html lang="fr" class="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Just Go - Mon Dashboard</title>
-    <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio,line-clamp"></script>
-    <script> tailwind.config = { darkMode: 'class' } </script>
-    <link rel="stylesheet" href="css/style.css">
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
-    <style>
-        @keyframes marquee { 0% { transform: translateX(0%); } 100% { transform: translateX(-50%); } }
-        .animate-marquee { display: inline-block; white-space: nowrap; animation: marquee 18s linear infinite; }
-        .animate-marquee:hover { animation-play-state: paused; }
-        .text-rainbow { background: linear-gradient(90deg, #60a5fa, #c084fc, #f472b6, #34d399, #60a5fa); background-size: 200% auto; color: transparent; -webkit-background-clip: text; background-clip: text; animation: rainbow-shift 6s linear infinite; }
-        @keyframes rainbow-shift { 0% { background-position: 0% center; } 100% { background-position: 200% center; } }
-        .neon-glow { text-shadow: 0 0 10px currentColor, 0 0 20px currentColor; }
-    </style>
-<style>
-    /* Animation de la banderole */
-    @keyframes marquee { 
-        0% { transform: translateX(0%); } 
-        100% { transform: translateX(-50%); } 
-    }
-    .animate-marquee { 
-        display: inline-block; 
-        white-space: nowrap; 
-        animation: marquee 18s linear infinite; 
-    }
-    .animate-marquee:hover { 
-        animation-play-state: paused; 
-    }
-
-    /* Effet Arc-en-ciel corrigé */
-    .text-rainbow { 
-        background: linear-gradient(90deg, #60a5fa, #c084fc, #f472b6, #34d399, #60a5fa); 
-        background-size: 200% auto; 
-        -webkit-background-clip: text; 
-        background-clip: text; 
-        -webkit-text-fill-color: transparent; 
-        animation: rainbow-shift 6s linear infinite, marquee 18s linear infinite; 
-    }
-    @keyframes rainbow-shift { 
-        0% { background-position: 0% center; } 
-        100% { background-position: 200% center; } 
-    }
-
-    /* Effet Néon corrigé */
-    .neon-glow { 
-        text-shadow: 0 0 8px currentColor, 0 0 20px currentColor, 0 0 30px currentColor; 
-    }
-</style>
+    <title>Just Go - GPS Tesla</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class' }
+    </script>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
-<body class="bg-gray-100 dark:bg-gray-950 text-gray-900 dark:text-gray-100 min-h-screen flex flex-col font-sans transition-colors duration-200">
-    <div id="header-placeholder"></div>
-    <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 flex flex-col gap-6">
-        <h2 class="text-xl font-bold flex items-center gap-2"><span>🧭</span> Just Go</h2>
-        <p>Contenu de la page Just Go...</p>
-    </main>
-    <div id="footer-placeholder"></div>
+<body class="bg-gray-100 dark:bg-gray-950 text-gray-900 dark:text-white h-screen w-screen overflow-hidden relative transition-colors">
+
+    <!-- LA CARTE UNIQUE PLEIN ÉCRAN -->
+    <div id="map" class="absolute inset-0 z-0"></div>
+
+    <!-- CONTRÔLES HAUT (Mute, Arrêter) -->
+    <div class="absolute top-6 right-6 z-10 flex items-center gap-3">
+        <button id="btn-mute" class="bg-white/80 dark:bg-gray-900/80 hover:bg-gray-200 dark:hover:bg-gray-800 p-3 rounded-full backdrop-blur border border-gray-300 dark:border-gray-700 shadow-lg text-lg transition-colors">🔊</button>
+        <button id="btn-stop" class="bg-red-600 hover:bg-red-500 px-4 py-2 rounded-xl backdrop-blur font-bold text-sm text-white shadow-lg transition-colors">Arrêter</button>
+    </div>
+
+    <!-- INDICATEUR DE VITESSE & FAVORIS (Bas à gauche) -->
+    <div class="absolute bottom-6 left-6 z-10 flex items-end gap-4">
+        <!-- Vitesse -->
+        <div id="speedometer" class="w-24 h-24 rounded-full bg-white/90 dark:bg-gray-900/90 border-4 border-gray-300 dark:border-gray-700 flex flex-col items-center justify-center shadow-2xl transition-all">
+            <span id="current-speed" class="text-2xl font-black">0</span>
+            <span class="text-[10px] text-gray-500 uppercase tracking-wider">km/h</span>
+            <span id="speed-limit" class="absolute bottom-1 text-[9px] text-gray-400">Lim: 50</span>
+        </div>
+        <!-- Favoris -->
+        <div class="flex flex-col gap-2">
+            <button onclick="naviguerVers('Domicile', 50.8503, 4.3517)" class="bg-white/90 dark:bg-gray-900/90 hover:bg-gray-200 dark:hover:bg-gray-800 backdrop-blur border border-gray-300 dark:border-gray-700 px-3 py-1.5 rounded-xl text-xs font-semibold shadow-lg flex items-center gap-1.5 transition-colors">
+                <span>🏠</span> Domicile
+            </button>
+            <button onclick="naviguerVers('Travail', 50.8466, 4.3528)" class="bg-white/90 dark:bg-gray-900/90 hover:bg-gray-200 dark:hover:bg-gray-800 backdrop-blur border border-gray-300 dark:border-gray-700 px-3 py-1.5 rounded-xl text-xs font-semibold shadow-lg flex items-center gap-1.5 transition-colors">
+                <span>💼</span> Travail
+            </button>
+        </div>
+    </div>
+
+    <!-- ENCART DE DONNÉES RÉUNIES (Bas au centre / droite) -->
+    <div class="absolute bottom-6 right-6 z-10 bg-white/90 dark:bg-gray-900/90 backdrop-blur border border-gray-300 dark:border-gray-700 rounded-2xl p-4 shadow-2xl w-80 flex flex-col gap-3 text-xs transition-colors">
+        <div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-800 pb-2">
+            <span class="font-bold flex items-center gap-1.5"><span>📊</span> Infos Route (OSRM / TomTom / OSM)</span>
+            <span id="gps-weather-badge" class="text-sm">⛅ --°C</span>
+        </div>
+        <div class="flex flex-col gap-1.5 text-gray-600 dark:text-gray-300">
+            <div class="flex justify-between">
+                <span>Itinéraire (OSRM) :</span>
+                <span id="info-route" class="font-semibold text-gray-900 dark:text-white">En attente de destination</span>
+            </div>
+            <div class="flex justify-between">
+                <span>Trafic / Incidents (TomTom) :</span>
+                <span id="info-traffic" class="font-semibold text-emerald-500">Fluide</span>
+            </div>
+            <div class="flex justify-between">
+                <span>Signalisation / Vitesse (OSM) :</span>
+                <span id="info-osm" class="font-semibold text-gray-900 dark:text-white">Zone standard (50 km/h)</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="js/main.js"></script>
+    <script src="js/justgo.js"></script>
 </body>
 </html>

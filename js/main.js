@@ -287,3 +287,132 @@ function lancerToutesLesFonctions() {
         }
     }
 }
+// ==========================================
+// 4. MÉTÉO LOCALE ET GESTION DES RACOURCIS
+// ==========================================
+
+// --- Météo Locale (Open-Meteo) ---
+function initWeatherWidget() {
+    const weatherCity = document.getElementById('weather-city');
+    if (!weatherCity) return; // Si on n'est pas sur la page d'accueil, on stoppe
+
+    if (!navigator.geolocation) {
+        weatherCity.innerText = "GPS non supporté";
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(async (position) => {
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+
+        try {
+            const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto`);
+            const data = await response.json();
+
+            document.getElementById('weather-temp').innerText = `${Math.round(data.current.temperature_2m)}°C`;
+            document.getElementById('weather-wind').innerText = `${data.current.wind_speed_10m} km/h`;
+            document.getElementById('weather-rain').innerText = `${data.current.precipitation} mm`;
+            weatherCity.innerText = "Ma Position";
+            document.getElementById('weather-desc').innerText = getWeatherDescription(data.current.weather_code);
+            document.getElementById('weather-icon').innerText = getWeatherEmoji(data.current.weather_code);
+
+            const forecastContainer = document.getElementById('weather-forecast');
+            let forecastHTML = '';
+            for (let i = 1; i <= 3; i++) {
+                const date = new Date(data.daily.time[i]).toLocaleDateString('fr-FR', { weekday: 'short' });
+                const maxTemp = Math.round(data.daily.temperature_2m_max[i]);
+                const emoji = getWeatherEmoji(data.daily.weather_code[i]);
+                forecastHTML += `
+                    <div class="text-center px-2">
+                        <span class="block text-xs text-gray-400 capitalize">${date}</span>
+                        <span class="text-lg">${emoji}</span>
+                        <span class="block text-xs font-semibold text-gray-700 dark:text-gray-300">${maxTemp}°C</span>
+                    </div>`;
+            }
+            forecastContainer.innerHTML = forecastHTML;
+
+        } catch (e) {
+            console.error("Erreur météo", e);
+            weatherCity.innerText = "Erreur météo";
+        }
+    }, () => {
+        weatherCity.innerText = "GPS refusé";
+    });
+}
+
+function getWeatherEmoji(code) {
+    if (code === 0) return '☀️';
+    if (code >= 1 && code <= 3) return '⛅';
+    if (code >= 51 && code <= 67) return '🌧️';
+    if (code >= 71 && code <= 77) return '❄️';
+    if (code >= 95) return '⚡';
+    return '☁️';
+}
+
+function getWeatherDescription(code) {
+    if (code === 0) return 'Grand soleil';
+    if (code >= 1 && code <= 3) return 'Partiellement nuageux';
+    if (code >= 51 && code <= 67) return 'Pluies / Averses';
+    return 'Couvert';
+}
+
+// --- Raccourcis Paramétriques avec Firestore ---
+// --- Raccourcis Paramétriques avec Firestore (Générique) ---
+function initShortcutsGrid(containerId, docId, defaultItems) {
+    const grid = document.getElementById(containerId);
+    if (!grid) return; // Si la page n'a pas ce conteneur, on stoppe
+
+    // Écoute en temps réel des raccourcis dans Firestore pour ce document spécifique
+    db.collection("dashboards").doc(docId).onSnapshot((docSnap) => {
+        let shortcuts = [];
+        if (docSnap.exists && docSnap.data().items) {
+            shortcuts = docSnap.data().items;
+        } else {
+            shortcuts = defaultItems;
+        }
+
+        grid.innerHTML = shortcuts.map(item => {
+            const logoSrc = item.logo ? item.logo : `https://www.google.com/s2/favicons?domain=${new URL(item.url).hostname}&sz=128`;
+
+            return `
+                <div data-id="${item.id}" class="group relative bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 flex flex-col items-center justify-center gap-2 shadow-sm hover:shadow-md hover:border-blue-500 transition-all cursor-grab active:cursor-grabbing">
+                    <a href="${item.url}" target="_blank" class="flex flex-col items-center gap-2 w-full">
+                        <img src="${logoSrc}" alt="${item.name}" class="w-10 h-10 object-contain rounded-lg" onerror="this.src='https://via.placeholder.com/40?text=?'">
+                        <span class="text-xs font-medium text-gray-800 dark:text-gray-200 truncate w-full text-center">${item.name}</span>
+                    </a>
+                </div>
+            `;
+        }).join('');
+
+        // Activation du Drag & Drop
+        if (typeof Sortable !== 'undefined') {
+            Sortable.create(grid, {
+                animation: 150,
+                onEnd: function () {
+                    const newOrder = Array.from(grid.children).map(el => {
+                        const id = el.getAttribute('data-id');
+                        return shortcuts.find(s => s.id === id);
+                    });
+                    db.collection("dashboards").doc(docId).set({ items: newOrder }, { merge: true });
+                }
+            });
+        }
+    });
+}
+
+// Lancement automatique au chargement
+document.addEventListener("DOMContentLoaded", () => {
+    initWeatherWidget(); // Uniquement sur index.html
+
+    // Grille de l'accueil (index.html)
+    initShortcutsGrid('shortcuts-grid', 'justin_shortcuts', [
+        { id: '1', name: 'Google', url: 'https://www.google.com', logo: '' },
+        { id: '2', name: 'GitHub', url: 'https://github.com', logo: '' }
+    ]);
+
+    // Grille de la page Multimédia (multimedia.html)
+    initShortcutsGrid('multimedia-grid', 'justin_multimedia_shortcuts', [
+        { id: '1', name: 'YouTube', url: 'https://www.youtube.com', logo: '' },
+        { id: '2', name: 'Netflix', url: 'https://www.netflix.com', logo: '' }
+    ]);
+});
