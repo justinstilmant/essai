@@ -7,24 +7,20 @@ let lastSpeedCheck = 0;
 let carMarker = null;
 
 document.addEventListener("DOMContentLoaded", () => {
-    // Petit délai pour s'assurer que le DOM HTML est 100% prêt pour Leaflet
     setTimeout(() => {
         initMap();
     }, 100);
 
     setupAudioToggle();
     mettreAJourAffichageFavoris();
+    chargerClesApiFirestore();
 });
 
-// --- 1. INITIALISATION DE LA CARTE & FLÈCHE DYNAMIQUE ---
+// --- 1. INITIALISATION DE LA CARTE & ROTATION DYNAMIQUE ---
 function initMap() {
     const mapContainer = document.getElementById('map');
-    if (!mapContainer) {
-        console.warn("Conteneur de carte #map introuvable dans le HTML.");
-        return;
-    }
+    if (!mapContainer) return;
 
-    // Évite d'initialiser la carte deux fois si elle existe déjà
     if (currentMap) {
         currentMap.invalidateSize();
         return;
@@ -52,7 +48,27 @@ function initMap() {
                 if (speedEl) speedEl.innerText = speedKmh;
 
                 updateCarPosition(lat, lon, heading);
+                
+                // Centrage sur la voiture
                 currentMap.setView([lat, lon], currentMap.getZoom(), { animate: true });
+
+                // --- ROTATION DE LA CARTE DANS LE SENS DE LA MARCHE ---
+                // Fait tourner la carte pour que le haut de l'écran soit toujours vers l'avant
+                const mapPane = currentMap.getPane('mapPane');
+                if (mapPane) {
+                    mapPane.style.transformOrigin = 'center center';
+                    mapPane.style.transform = `rotate(${-heading}deg)`;
+                    mapPane.style.transition = 'transform 0.3s ease-out';
+                }
+
+                // Fait pivoter l'icône de la voiture dans l'autre sens pour qu'elle pointe toujours vers le haut de l'écran
+                if (carMarker) {
+                    const iconElement = carMarker.getElement();
+                    if (iconElement) {
+                        const innerDiv = iconElement.querySelector('.car-rotate-container');
+                        if (innerDiv) innerDiv.style.transform = `rotate(${heading}deg)`;
+                    }
+                }
 
                 verifierSignalisationRoute(lat, lon);
             },
@@ -68,7 +84,7 @@ function updateCarPosition(lat, lon, heading) {
     const carIcon = L.divIcon({
         className: 'custom-car-icon',
         html: `
-            <div style="transform: rotate(${heading}deg); transition: transform 0.3s ease; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; filter: drop-shadow(0px 3px 6px rgba(0,0,0,0.4));">
+            <div class="car-rotate-container" style="transform: rotate(${heading}deg); width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; filter: drop-shadow(0px 3px 6px rgba(0,0,0,0.4));">
                 <svg viewBox="0 0 24 24" width="32" height="32" fill="#3b82f6" xmlns="http://www.w3.org/2000/svg">
                     <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/>
                 </svg>
@@ -205,8 +221,25 @@ async function verifierSignalisationRoute(lat, lon) {
     }
 }
 
-// --- 6. GESTION DES CLÉS API & FAVORIS (DOMICILE / TRAVAIL) ---
-function getApiKey(name) { return localStorage.getItem(`api_key_${name}`) || ''; }
+// --- 6. GESTION DES CLÉS API (FIRESTORE + LOCALSTORAGE) & FAVORIS ---
+function getApiKey(name) { 
+    return localStorage.getItem(`api_key_${name}`) || ''; 
+}
+
+async function chargerClesApiFirestore() {
+    try {
+        if (typeof db === 'undefined') return;
+        const docSnap = await db.collection("dashboards").doc("justin_api_keys").get();
+        if (docSnap.exists) {
+            const keys = docSnap.data();
+            if (keys.tomtom) localStorage.setItem('api_key_tomtom', keys.tomtom);
+            if (keys.openweather) localStorage.setItem('api_key_openweather', keys.openweather);
+            if (keys.mapbox) localStorage.setItem('api_key_mapbox', keys.mapbox);
+        }
+    } catch (e) {
+        console.warn("Chargement clés Firestore ignoré (mode local)", e);
+    }
+}
 
 function openApiModal() {
     let modal = document.getElementById('api-modal');
@@ -236,7 +269,7 @@ function openApiModal() {
                 </div>
                 <div class="flex gap-2 mt-2">
                     <button onclick="document.getElementById('api-modal').remove()" class="flex-1 bg-gray-200 dark:bg-gray-800 py-2 rounded-lg text-xs font-semibold">Annuler</button>
-                    <button onclick="saveApiKeys()" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-lg text-xs font-semibold">Enregistrer</button>
+                    <button onclick="saveApiKeys()" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-lg text-xs font-semibold">Enregistrer (Cloud + Local)</button>
                 </div>
             </div>
         `;
@@ -249,12 +282,32 @@ function openApiModal() {
     document.getElementById('key-mapbox').value = getApiKey('mapbox');
 }
 
-function saveApiKeys() {
-    localStorage.setItem('api_key_tomtom', document.getElementById('key-tomtom').value.trim());
-    localStorage.setItem('api_key_openweather', document.getElementById('key-openweather').value.trim());
-    localStorage.setItem('api_key_mapbox', document.getElementById('key-mapbox').value.trim());
+async function saveApiKeys() {
+    const tomtom = document.getElementById('key-tomtom').value.trim();
+    const openweather = document.getElementById('key-openweather').value.trim();
+    const mapbox = document.getElementById('key-mapbox').value.trim();
+
+    // 1. Sauvegarde locale
+    localStorage.setItem('api_key_tomtom', tomtom);
+    localStorage.setItem('api_key_openweather', openweather);
+    localStorage.setItem('api_key_mapbox', mapbox);
+
+    // 2. Sauvegarde Cloud sur Firestore
+    try {
+        if (typeof db !== 'undefined') {
+            await db.collection("dashboards").doc("justin_api_keys").set({
+                tomtom: tomtom,
+                openweather: openweather,
+                mapbox: mapbox
+            }, { merge: true });
+            console.log("Clés API sauvegardées dans Firestore !");
+        }
+    } catch (e) {
+        console.error("Erreur de sauvegarde Firestore des clés API", e);
+    }
+
     document.getElementById('api-modal').remove();
-    alert("Clés enregistrées !");
+    alert("Clés enregistrées et synchronisées !");
 }
 
 async function configurerFavori(type) {
