@@ -79,8 +79,11 @@ function sauvegarderConfigHA() {
     alert("Configuration enregistrée avec succès !");
 }
 
-// --- AJOUT DE BOUTONS (MODAL) ---
-function openAddButtonModal() {
+// --- AJOUT DE BOUTONS AVEC RÉCUPÉRATION DES ENTITÉS ---
+async function openAddButtonModal() {
+    const haUrl = localStorage.getItem('ha_url');
+    const haToken = localStorage.getItem('ha_token');
+
     let modal = document.getElementById('add-btn-modal');
     if (modal) modal.remove();
 
@@ -103,8 +106,10 @@ function openAddButtonModal() {
                     <input type="text" id="widget-icon" value="🚪" class="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white outline-none">
                 </div>
                 <div class="flex flex-col gap-1">
-                    <label class="font-semibold text-gray-700 dark:text-gray-300">ID de l'entité Home Assistant</label>
-                    <input type="text" id="widget-entity" placeholder="Ex: cover.portail ou light.salon" class="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white outline-none">
+                    <label class="font-semibold text-gray-700 dark:text-gray-300">Sélectionner l'appareil (Home Assistant)</label>
+                    <select id="widget-entity" class="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white outline-none">
+                        <option value="">Chargement des appareils...</option>
+                    </select>
                 </div>
                 <div class="flex flex-col gap-1">
                     <label class="font-semibold text-gray-700 dark:text-gray-300">Type d'action</label>
@@ -123,16 +128,52 @@ function openAddButtonModal() {
         </div>
     `;
     document.body.appendChild(modal);
+
+    // Charger dynamiquement les entités depuis l'API de Home Assistant
+    if (haUrl && haToken) {
+        try {
+            const response = await fetch(`${haUrl}/api/states`, {
+                headers: {
+                    'Authorization': `Bearer ${haToken}`,
+                    'Content-Type': 'application/json',
+                }
+            });
+            if (response.ok) {
+                const states = await response.json();
+                const select = document.getElementById('widget-entity');
+                select.innerHTML = '<option value="">-- Choisir un appareil --</option>';
+                
+                // On trie les entités par ordre alphabétique
+                states.sort((a, b) => a.entity_id.localeCompare(b.entity_id));
+
+                states.forEach(entite => {
+                    const opt = document.createElement('option');
+                    opt.value = entite.entity_id;
+                    // Affiche l'ID et le nom amical si disponible
+                    const friendlyName = entite.attributes.friendly_name || entite.entity_id;
+                    opt.textContent = `${friendlyName} (${entite.entity_id})`;
+                    select.appendChild(opt);
+                });
+            } else {
+                document.getElementById('widget-entity').innerHTML = '<option value="">Erreur de chargement des entités</option>';
+            }
+        } catch (e) {
+            console.error("Impossible de joindre HA pour les entités", e);
+            document.getElementById('widget-entity').innerHTML = '<option value="">Impossible de joindre Home Assistant</option>';
+        }
+    } else {
+        document.getElementById('widget-entity').innerHTML = '<option value="">Veuillez d\'abord configurer votre token HA</option>';
+    }
 }
 
 function sauvegarderNouveauBouton() {
     const name = document.getElementById('widget-name').value.trim();
     const icon = document.getElementById('widget-icon').value.trim() || '🏠';
-    const entity = document.getElementById('widget-entity').value.trim();
+    const entity = document.getElementById('widget-entity').value;
     const service = document.getElementById('widget-service').value;
 
     if (!name || !entity) {
-        alert("Veuillez remplir au moins le nom et l'entité.");
+        alert("Veuillez donner un nom et sélectionner une entité.");
         return;
     }
 
