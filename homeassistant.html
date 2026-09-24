@@ -2,10 +2,22 @@
 <html lang="fr" class="dark">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Just Go - Maison Connectée</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        tailwind.config = { darkMode: 'class' }
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#0b0f19',
+                        cardBg: '#131c2e',
+                    }
+                }
+            }
+        }
     </script>
     <style>
         @keyframes scrollBanner {
@@ -13,14 +25,17 @@
             100% { transform: translateX(-100%); }
         }
         .animate-banner {
-            animation: scrollBanner 20s linear infinite;
+            animation: scrollBanner 25s linear infinite;
+        }
+        .banner-container:hover .animate-banner {
+            animation-play-state: paused;
         }
     </style>
 </head>
-<body class="bg-gray-100 dark:bg-gray-950 text-gray-900 dark:text-white h-screen w-screen overflow-hidden flex flex-col transition-colors">
+<body class="bg-gray-50 dark:bg-darkBg text-gray-900 dark:text-white min-h-screen flex flex-col transition-colors duration-300">
 
-    <!-- 1. EN-TÊTE GLOBAL -->
-    <header class="bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 px-6 py-3 flex items-center justify-between shadow-md z-20">
+    <!-- 1. EN-TÊTE GLOBAL IDENTIQUE AUX AUTRES PAGES -->
+    <header class="bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 px-6 py-3 flex items-center justify-between shadow-md sticky top-0 z-30">
         <div class="flex items-center gap-4">
             <div class="flex items-center gap-2">
                 <span class="text-xl">🚗</span>
@@ -32,41 +47,43 @@
             <a href="index.html" class="px-3 py-1.5 rounded-lg bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-xs font-semibold transition-colors">Accueil</a>
             <a href="justgo.html" class="px-3 py-1.5 rounded-lg bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-xs font-semibold transition-colors">Navigation</a>
             <a href="homeassistant.html" class="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold transition-colors">Maison</a>
-            <button onclick="openAddButtonModal()" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors cursor-pointer">➕ Ajouter un bouton</button>
+            <button onclick="openAddButtonModal()" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors cursor-pointer shadow-sm">➕ Ajouter un bouton</button>
             <button onclick="openHaConfigModal()" class="px-3 py-1.5 rounded-lg bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-xs font-semibold transition-colors cursor-pointer">⚙️ Config HA</button>
         </div>
     </header>
 
-    <!-- 2. BANDEROLE DÉFILANTE -->
-    <div id="banner-container" class="w-full py-1.5 overflow-hidden whitespace-nowrap shadow-inner z-10 transition-colors" style="background-color: #1e293b; color: #ffffff;">
-        <div class="inline-block animate-banner text-xs font-medium px-4" id="banner-text">
+    <!-- 2. BANDEROLE DÉFILANTE HYPER-PERSONNALISABLE -->
+    <div id="banner-wrapper" class="w-full py-2 overflow-hidden whitespace-nowrap shadow-inner z-20 transition-colors banner-container" style="background-color: #1e293b; color: #ffffff;">
+        <div class="inline-block animate-banner text-xs font-medium px-4" id="banner-text-content">
             Bienvenue à bord de votre tableau de bord connecté • Contrôle de la maison en temps réel
         </div>
     </div>
 
-    <!-- 3. CONTENU PRINCIPAL : GRILLE DYNAMIQUE DES BOUTONS -->
-    <main class="flex-1 p-6 overflow-y-auto flex flex-col gap-6">
+    <!-- 3. CONTENU PRINCIPAL -->
+    <main class="flex-1 p-6 max-w-7xl mx-auto w-full flex flex-col gap-6">
         
         <!-- Alerte si non configuré -->
         <div id="ha-warning" class="hidden bg-amber-500/10 border border-amber-500/30 p-4 rounded-2xl flex items-center justify-between">
             <div class="flex items-center gap-3">
                 <span class="text-xl">⚠️</span>
-                <p class="text-xs text-amber-600 dark:text-amber-400 font-medium">Veuillez configurer votre URL Tailscale Funnel et votre jeton d'accès API.</p>
+                <p class="text-xs text-amber-600 dark:text-amber-400 font-medium">Veuillez configurer votre URL Tailscale Funnel et votre jeton d'accès API pour piloter vos équipements.</p>
             </div>
             <button onclick="openHaConfigModal()" class="bg-amber-600 hover:bg-amber-500 text-white text-xs px-3 py-1.5 rounded-xl font-semibold cursor-pointer">Configurer</button>
         </div>
 
-        <!-- Grille injectée dynamiquement -->
+        <!-- Titre de section -->
+        <div class="flex items-center justify-between">
+            <h2 class="text-base font-bold flex items-center gap-2"><span>🏠</span> Appareils connectés</h2>
+            <span class="text-xs text-gray-500 font-medium" id="counter-devices">0 appareil(s)</span>
+        </div>
+
+        <!-- Grille des widgets / boutons -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" id="custom-devices-grid">
-            <!-- Les boutons configurés s'afficheront ici automatiquement -->
+            <!-- Injecté dynamiquement par le script -->
         </div>
     </main>
 
-    <!-- Chargement de la logique JavaScript externe -->
-    <!-- Au lieu de ça : -->
-<!-- <script src="homeassistant.js"></script> -->
-
-<!-- Vous mettez le chemin exact vers votre dossier : -->
-<script src="js/homeassistant.js"></script>
+    <!-- Chargement de la logique JS externe -->
+    <script src="js/homeassistant.js"></script>
 </body>
 </html>
