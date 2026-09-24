@@ -11,14 +11,96 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // --- 1. INITIALISATION DE LA CARTE ---
+// --- VARIABLES GLOBALES GPS ---
+let currentMap = null;
+let currentCoords = null;
+let routeLayer = null;
+let isMuted = false;
+let lastSpeedCheck = 0;
+let carMarker = null; // Marqueur de la voiture sur la carte
+
+document.addEventListener("DOMContentLoaded", () => {
+    initMap();
+    setupAudioToggle();
+    mettreAJourAffichageFavoris();
+});
+
+// --- 1. INITIALISATION DE LA CARTE & FLÈCHE DYNAMIQUE ---
 function initMap() {
     // Position par défaut (Bruxelles) en attendant le GPS
-    currentMap = L.map('map', { zoomControl: false }).setView([50.8503, 4.3517], 14);
+    currentMap = L.map('map', { zoomControl: false }).setView([50.8503, 4.3517], 16);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '© OpenStreetMap'
     }).addTo(currentMap);
+
+    // Suivi de la position GPS en temps réel avec cap (heading) et vitesse
+    if (navigator.geolocation) {
+        navigator.geolocation.watchPosition(
+            (position) => {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+                const speedMs = position.coords.speed || 0;
+                const speedKmh = Math.round(speedMs * 3.6);
+                // Le cap (direction en degrés de 0 à 360). S'il n'est pas fourni par le GPS, on garde 0 par défaut.
+                const heading = position.coords.heading !== null && !isNaN(position.coords.heading) ? position.coords.heading : 0;
+
+                currentCoords = { lat, lon };
+
+                // Mise à jour de l'affichage de la vitesse numérique
+                document.getElementById('current-speed').innerText = speedKmh;
+
+                // --- GESTION DE LA FLÈCHE DE LA VOITURE ---
+                updateCarPosition(lat, lon, heading);
+
+                // Centrer la carte en mode "centrage automatique" (façon Tesla)
+                currentMap.setView([lat, lon], currentMap.getZoom(), { animate: true });
+
+                // Rotation dynamique de la carte dans le sens de la marche (si le cap est actif)
+                if (currentMap.getPane('mapPane')) {
+                    // Applique une rotation fluide du conteneur de la carte selon la direction
+                    currentMap.getPane('mapPane').style.transformOrigin = 'center center';
+                    // Note: Optionnel, décommentez la ligne ci-dessous si vous voulez que toute la carte tourne avec la voiture
+                    // currentMap.getPane('mapPane').style.transform = `rotate(${-heading}deg)`;
+                }
+
+                // Vérification de la signalisation routière (vitesse limite OSM)
+                verifierSignalisationRoute(lat, lon);
+            },
+            (error) => {
+                console.warn("Erreur de géolocalisation GPS", error);
+            },
+            { enableHighAccuracy: true, maximumAge: 500, timeout: 5000 }
+        );
+    }
+}
+
+// Fonction pour créer ou mettre à jour la flèche de la voiture qui pointe dans le sens de la marche
+function updateCarPosition(lat, lon, heading) {
+    // Icône personnalisée de flèche Tesla orientable
+    const carIcon = L.divIcon({
+        className: 'custom-car-icon',
+        html: `
+            <div style="transform: rotate(${heading}deg); transition: transform 0.3s ease; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; filter: drop-shadow(0px 3px 6px rgba(0,0,0,0.4));">
+                <svg viewBox="0 0 24 24" width="32" height="32" fill="#3b82f6" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/>
+                </svg>
+            </div>
+        `,
+        iconSize: [36, 36],
+        iconAnchor: [18, 18]
+    });
+
+    if (!carMarker) {
+        // Premier affichage du marqueur
+        carMarker = L.marker([lat, lon], { icon: carIcon }).addTo(currentMap);
+    } else {
+        // Mise à jour de la position et de l'orientation de la flèche
+        carMarker.setLatLng([lat, lon]);
+        carMarker.setIcon(carIcon);
+    }
+}
 
     // Suivi de la position GPS en temps réel
     if (navigator.geolocation) {
