@@ -229,3 +229,61 @@ document.addEventListener("DOMContentLoaded", () => {
         { id: '2', name: 'Netflix', url: 'https://www.netflix.com', logo: '' }
     ]);
 });
+// ==========================================
+// LANCEMENT GLOBAL & SÉCURITÉ (DÉFINITIF)
+// ==========================================
+document.addEventListener("DOMContentLoaded", () => {
+    // 1. Vérification du mot de passe
+    if (sessionStorage.getItem('site_unlocked') !== 'true') {
+        const lockScreen = document.createElement('div');
+        lockScreen.id = 'site-lock-screen';
+        lockScreen.className = 'fixed inset-0 z-50 bg-gray-950 flex items-center justify-center p-4';
+        lockScreen.innerHTML = `
+            <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl flex flex-col gap-4 text-center">
+                <div class="text-3xl">🔒</div>
+                <h2 class="text-lg font-bold text-white">Accès Protégé</h2>
+                <p class="text-xs text-gray-400">Entrez le mot de passe pour accéder à votre tableau de bord.</p>
+                <input type="password" id="site-password-input" placeholder="Mot de passe..." class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+                <button id="site-login-btn" class="w-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium py-2 rounded-lg transition-colors">
+                    Déverrouiller
+                </button>
+            </div>
+        `;
+        document.body.appendChild(lockScreen);
+
+        const submitPassword = () => {
+            const pwd = document.getElementById('site-password-input').value;
+            if (pwd === "justin2026") { // Votre mot de passe
+                sessionStorage.setItem('site_unlocked', 'true');
+                lockScreen.remove();
+                lancerToutesLesFonctions();
+            } else {
+                alert("Mot de passe incorrect !");
+                document.getElementById('site-password-input').value = '';
+            }
+        };
+
+        document.getElementById('site-login-btn').addEventListener('click', submitPassword);
+        document.getElementById('site-password-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') submitPassword();
+        });
+        return; // On bloque tout tant que c'est verrouillé
+    }
+
+    // Si déjà déverrouillé, on lance tout
+    lancerToutesLesFonctions();
+});
+
+// Fonction magique qui détecte et lance toutes les fonctions "init..." du site toute seule
+function lancerToutesLesFonctions() {
+    for (let funcName in window) {
+        // Dès qu'une fonction commence par "init" (ex: initWeatherWidget, initShortcutsGrid, etc.), on la lance !
+        if (funcName.startsWith('init') && typeof window[funcName] === 'function') {
+            try {
+                window[funcName]();
+            } catch (e) {
+                console.error(`Erreur dans ${funcName}:`, e);
+            }
+        }
+    }
+}
