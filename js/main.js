@@ -170,3 +170,62 @@ function verifierAdmin() {
         alert("Mot de passe incorrect.");
     }
 }
+// --- Raccourcis Paramétriques avec Firestore (Générique) ---
+function initShortcutsGrid(containerId, docId, defaultItems) {
+    const grid = document.getElementById(containerId);
+    if (!grid) return; // Si la page n'a pas ce conteneur, on stoppe
+
+    // Écoute en temps réel des raccourcis dans Firestore pour ce document spécifique
+    db.collection("dashboards").doc(docId).onSnapshot((docSnap) => {
+        let shortcuts = [];
+        if (docSnap.exists && docSnap.data().items) {
+            shortcuts = docSnap.data().items;
+        } else {
+            shortcuts = defaultItems;
+        }
+
+        grid.innerHTML = shortcuts.map(item => {
+            const logoSrc = item.logo ? item.logo : `https://www.google.com/s2/favicons?domain=${new URL(item.url).hostname}&sz=128`;
+
+            return `
+                <div data-id="${item.id}" class="group relative bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 flex flex-col items-center justify-center gap-2 shadow-sm hover:shadow-md hover:border-blue-500 transition-all cursor-grab active:cursor-grabbing">
+                    <a href="${item.url}" target="_blank" class="flex flex-col items-center gap-2 w-full">
+                        <img src="${logoSrc}" alt="${item.name}" class="w-10 h-10 object-contain rounded-lg" onerror="this.src='https://via.placeholder.com/40?text=?'">
+                        <span class="text-xs font-medium text-gray-800 dark:text-gray-200 truncate w-full text-center">${item.name}</span>
+                    </a>
+                </div>
+            `;
+        }).join('');
+
+        // Activation du Drag & Drop
+        if (typeof Sortable !== 'undefined') {
+            Sortable.create(grid, {
+                animation: 150,
+                onEnd: function () {
+                    const newOrder = Array.from(grid.children).map(el => {
+                        const id = el.getAttribute('data-id');
+                        return shortcuts.find(s => s.id === id);
+                    });
+                    db.collection("dashboards").doc(docId).set({ items: newOrder }, { merge: true });
+                }
+            });
+        }
+    });
+}
+
+// Lancement automatique au chargement
+document.addEventListener("DOMContentLoaded", () => {
+    initWeatherWidget(); // Uniquement sur index.html
+
+    // Grille de l'accueil (index.html)
+    initShortcutsGrid('shortcuts-grid', 'justin_shortcuts', [
+        { id: '1', name: 'Google', url: 'https://www.google.com', logo: '' },
+        { id: '2', name: 'GitHub', url: 'https://github.com', logo: '' }
+    ]);
+
+    // Grille de la page Multimédia (multimedia.html)
+    initShortcutsGrid('multimedia-grid', 'justin_multimedia_shortcuts', [
+        { id: '1', name: 'YouTube', url: 'https://www.youtube.com', logo: '' },
+        { id: '2', name: 'Netflix', url: 'https://www.netflix.com', logo: '' }
+    ]);
+});
