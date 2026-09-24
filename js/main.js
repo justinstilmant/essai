@@ -6,27 +6,36 @@ const db = firebase.firestore();
 let isAdmin = false;
 
 document.addEventListener("DOMContentLoaded", function() {
-    // 1. Chargement dynamique du Header et du Footer
     function loadHTML(id, filename) {
         fetch(filename)
-            .then(response => {
-                if (!response.ok) throw new Error("Erreur de chargement : " + filename);
-                return response.text();
-            })
+            .then(response => response.text())
             .then(data => {
                 document.getElementById(id).innerHTML = data;
-                // Si on vient de charger le header, on initialise les éléments liés (comme l'horloge)
+                
                 if (id === 'header-placeholder') {
                     initHeaderFeatures();
+                    
+                    // --- ICI : Détection automatique de la page active ---
+                    const currentPath = window.location.pathname.split("/").pop() || "index.html";
+                    const navLinks = document.querySelectorAll("header nav a");
+                    
+                    navLinks.forEach(link => {
+                        const linkHref = link.getAttribute("href");
+                        if (linkHref === currentPath) {
+                            // Style pour le lien actif (ex: fond bleu, texte blanc)
+                            link.className = "px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white shadow";
+                        } else {
+                            // Style pour les liens inactifs
+                            link.className = "px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg";
+                        }
+                    });
                 }
-            })
-            .catch(error => console.error(error));
+            });
     }
 
     loadHTML('header-placeholder', 'includes/header.html');
     loadHTML('footer-placeholder', 'includes/footer.html');
 });
-
 // 2. Gestion du mode Sombre / Clair[cite: 1]
 function toggleDarkMode() {
     const html = document.documentElement;
@@ -142,3 +151,4 @@ function verifierAdmin() {
         alert("Mot de passe incorrect.");
     }
 }
+
