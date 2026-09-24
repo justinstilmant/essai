@@ -229,72 +229,13 @@ document.addEventListener("DOMContentLoaded", () => {
         { id: '2', name: 'Netflix', url: 'https://www.netflix.com', logo: '' }
     ]);
 });
+
 // ==========================================
-// LANCEMENT GLOBAL & SÉCURITÉ (DÉFINITIF)
+// 1. MÉTÉO LOCALE (Open-Meteo)
 // ==========================================
-document.addEventListener("DOMContentLoaded", () => {
-    // 1. Vérification du mot de passe
-    if (sessionStorage.getItem('site_unlocked') !== 'true') {
-        const lockScreen = document.createElement('div');
-        lockScreen.id = 'site-lock-screen';
-        lockScreen.className = 'fixed inset-0 z-50 bg-gray-950 flex items-center justify-center p-4';
-        lockScreen.innerHTML = `
-            <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl flex flex-col gap-4 text-center">
-                <div class="text-3xl">🔒</div>
-                <h2 class="text-lg font-bold text-white">Accès Protégé</h2>
-                <p class="text-xs text-gray-400">Entrez le mot de passe pour accéder à votre tableau de bord.</p>
-                <input type="password" id="site-password-input" placeholder="Mot de passe..." class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
-                <button id="site-login-btn" class="w-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium py-2 rounded-lg transition-colors">
-                    Déverrouiller
-                </button>
-            </div>
-        `;
-        document.body.appendChild(lockScreen);
-
-        const submitPassword = () => {
-            const pwd = document.getElementById('site-password-input').value;
-            if (pwd === "justin2026") { // Votre mot de passe
-                sessionStorage.setItem('site_unlocked', 'true');
-                lockScreen.remove();
-                lancerToutesLesFonctions();
-            } else {
-                alert("Mot de passe incorrect !");
-                document.getElementById('site-password-input').value = '';
-            }
-        };
-
-        document.getElementById('site-login-btn').addEventListener('click', submitPassword);
-        document.getElementById('site-password-input').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') submitPassword();
-        });
-        return; // On bloque tout tant que c'est verrouillé
-    }
-
-    // Si déjà déverrouillé, on lance tout
-    lancerToutesLesFonctions();
-});
-
-// Fonction magique qui détecte et lance toutes les fonctions "init..." du site toute seule
-function lancerToutesLesFonctions() {
-    for (let funcName in window) {
-        // Dès qu'une fonction commence par "init" (ex: initWeatherWidget, initShortcutsGrid, etc.), on la lance !
-        if (funcName.startsWith('init') && typeof window[funcName] === 'function') {
-            try {
-                window[funcName]();
-            } catch (e) {
-                console.error(`Erreur dans ${funcName}:`, e);
-            }
-        }
-    }
-}
-// ==========================================
-// 4. MÉTÉO LOCALE ET GESTION DES RACOURCIS
-// ==========================================
-
-// --- Météo Locale (Open-Meteo) ---
 function initWeatherWidget() {
     const weatherCity = document.getElementById('weather-city');
-    if (!weatherCity) return; // Si on n'est pas sur la page d'accueil, on stoppe
+    if (!weatherCity) return; // Uniquement sur index.html
 
     if (!navigator.geolocation) {
         weatherCity.innerText = "GPS non supporté";
@@ -317,19 +258,21 @@ function initWeatherWidget() {
             document.getElementById('weather-icon').innerText = getWeatherEmoji(data.current.weather_code);
 
             const forecastContainer = document.getElementById('weather-forecast');
-            let forecastHTML = '';
-            for (let i = 1; i <= 3; i++) {
-                const date = new Date(data.daily.time[i]).toLocaleDateString('fr-FR', { weekday: 'short' });
-                const maxTemp = Math.round(data.daily.temperature_2m_max[i]);
-                const emoji = getWeatherEmoji(data.daily.weather_code[i]);
-                forecastHTML += `
-                    <div class="text-center px-2">
-                        <span class="block text-xs text-gray-400 capitalize">${date}</span>
-                        <span class="text-lg">${emoji}</span>
-                        <span class="block text-xs font-semibold text-gray-700 dark:text-gray-300">${maxTemp}°C</span>
-                    </div>`;
+            if (forecastContainer) {
+                let forecastHTML = '';
+                for (let i = 1; i <= 3; i++) {
+                    const date = new Date(data.daily.time[i]).toLocaleDateString('fr-FR', { weekday: 'short' });
+                    const maxTemp = Math.round(data.daily.temperature_2m_max[i]);
+                    const emoji = getWeatherEmoji(data.daily.weather_code[i]);
+                    forecastHTML += `
+                        <div class="text-center px-2">
+                            <span class="block text-xs text-gray-400 capitalize">${date}</span>
+                            <span class="text-lg">${emoji}</span>
+                            <span class="block text-xs font-semibold text-gray-700 dark:text-gray-300">${maxTemp}°C</span>
+                        </div>`;
+                }
+                forecastContainer.innerHTML = forecastHTML;
             }
-            forecastContainer.innerHTML = forecastHTML;
 
         } catch (e) {
             console.error("Erreur météo", e);
@@ -356,13 +299,27 @@ function getWeatherDescription(code) {
     return 'Couvert';
 }
 
-// --- Raccourcis Paramétriques avec Firestore ---
-// --- Raccourcis Paramétriques avec Firestore (Générique) ---
-function initShortcutsGrid(containerId, docId, defaultItems) {
-    const grid = document.getElementById(containerId);
-    if (!grid) return; // Si la page n'a pas ce conteneur, on stoppe
+// ==========================================
+// 2. RACCOURCIS PARAMÉTRIQUES (Firestore)
+// ==========================================
+function initShortcutsGrid() {
+    // Grille de l'accueil
+    setupGrid('shortcuts-grid', 'justin_shortcuts', [
+        { id: '1', name: 'Google', url: 'https://www.google.com', logo: '' },
+        { id: '2', name: 'GitHub', url: 'https://github.com', logo: '' }
+    ]);
 
-    // Écoute en temps réel des raccourcis dans Firestore pour ce document spécifique
+    // Grille de la page Multimédia (si présente)
+    setupGrid('multimedia-grid', 'justin_multimedia_shortcuts', [
+        { id: '1', name: 'YouTube', url: 'https://www.youtube.com', logo: '' },
+        { id: '2', name: 'Netflix', url: 'https://www.netflix.com', logo: '' }
+    ]);
+}
+
+function setupGrid(containerId, docId, defaultItems) {
+    const grid = document.getElementById(containerId);
+    if (!grid) return; // Si la page n'a pas ce conteneur, on ignore
+
     db.collection("dashboards").doc(docId).onSnapshot((docSnap) => {
         let shortcuts = [];
         if (docSnap.exists && docSnap.data().items) {
@@ -384,7 +341,6 @@ function initShortcutsGrid(containerId, docId, defaultItems) {
             `;
         }).join('');
 
-        // Activation du Drag & Drop
         if (typeof Sortable !== 'undefined') {
             Sortable.create(grid, {
                 animation: 150,
@@ -400,19 +356,58 @@ function initShortcutsGrid(containerId, docId, defaultItems) {
     });
 }
 
-// Lancement automatique au chargement
+// ==========================================
+// 3. SÉCURITÉ & LANCEMENT AUTOMATIQUE
+// ==========================================
 document.addEventListener("DOMContentLoaded", () => {
-    initWeatherWidget(); // Uniquement sur index.html
+    if (sessionStorage.getItem('site_unlocked') !== 'true') {
+        const lockScreen = document.createElement('div');
+        lockScreen.id = 'site-lock-screen';
+        lockScreen.className = 'fixed inset-0 z-50 bg-gray-950 flex items-center justify-center p-4';
+        lockScreen.innerHTML = `
+            <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl flex flex-col gap-4 text-center">
+                <div class="text-3xl">🔒</div>
+                <h2 class="text-lg font-bold text-white">Accès Protégé</h2>
+                <p class="text-xs text-gray-400">Entrez le mot de passe pour accéder à votre tableau de bord.</p>
+                <input type="password" id="site-password-input" placeholder="Mot de passe..." class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+                <button id="site-login-btn" class="w-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium py-2 rounded-lg transition-colors">
+                    Déverrouiller
+                </button>
+            </div>
+        `;
+        document.body.appendChild(lockScreen);
 
-    // Grille de l'accueil (index.html)
-    initShortcutsGrid('shortcuts-grid', 'justin_shortcuts', [
-        { id: '1', name: 'Google', url: 'https://www.google.com', logo: '' },
-        { id: '2', name: 'GitHub', url: 'https://github.com', logo: '' }
-    ]);
+        const submitPassword = () => {
+            const pwd = document.getElementById('site-password-input').value;
+            if (pwd === "justin2026") {
+                sessionStorage.setItem('site_unlocked', 'true');
+                lockScreen.remove();
+                lancerToutesLesFonctions();
+            } else {
+                alert("Mot de passe incorrect !");
+                document.getElementById('site-password-input').value = '';
+            }
+        };
 
-    // Grille de la page Multimédia (multimedia.html)
-    initShortcutsGrid('multimedia-grid', 'justin_multimedia_shortcuts', [
-        { id: '1', name: 'YouTube', url: 'https://www.youtube.com', logo: '' },
-        { id: '2', name: 'Netflix', url: 'https://www.netflix.com', logo: '' }
-    ]);
+        document.getElementById('site-login-btn').addEventListener('click', submitPassword);
+        document.getElementById('site-password-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') submitPassword();
+        });
+        return;
+    }
+
+    lancerToutesLesFonctions();
 });
+
+// Détecte et lance automatiquement toutes les fonctions commençant par "init"
+function lancerToutesLesFonctions() {
+    for (let funcName in window) {
+        if (funcName.startsWith('init') && typeof window[funcName] === 'function') {
+            try {
+                window[funcName]();
+            } catch (e) {
+                console.error(`Erreur dans ${funcName}:`, e);
+            }
+        }
+    }
+}
