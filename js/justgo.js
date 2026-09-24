@@ -1,4 +1,4 @@
-// --- VARIABLES GLOBALES GPS (Déclarées une seule fois) ---
+// --- VARIABLES GLOBALES GPS ---
 let currentMap = null;
 let currentCoords = null;
 let routeLayer = null;
@@ -7,13 +7,29 @@ let lastSpeedCheck = 0;
 let carMarker = null;
 
 document.addEventListener("DOMContentLoaded", () => {
-    initMap();
+    // Petit délai pour s'assurer que le DOM HTML est 100% prêt pour Leaflet
+    setTimeout(() => {
+        initMap();
+    }, 100);
+
     setupAudioToggle();
     mettreAJourAffichageFavoris();
 });
 
 // --- 1. INITIALISATION DE LA CARTE & FLÈCHE DYNAMIQUE ---
 function initMap() {
+    const mapContainer = document.getElementById('map');
+    if (!mapContainer) {
+        console.warn("Conteneur de carte #map introuvable dans le HTML.");
+        return;
+    }
+
+    // Évite d'initialiser la carte deux fois si elle existe déjà
+    if (currentMap) {
+        currentMap.invalidateSize();
+        return;
+    }
+
     currentMap = L.map('map', { zoomControl: false }).setView([50.8503, 4.3517], 16);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -70,7 +86,7 @@ function updateCarPosition(lat, lon, heading) {
     }
 }
 
-// --- 2. SYNTHÈSE VOCALE ---
+// --- 2. SYNTHÈSE VOCALE & AUDIO ---
 function falar(text) { parler(text); }
 
 function parler(text) {
@@ -151,11 +167,6 @@ async function naviguerVers(nomDestination, destLat, destLon) {
             if (routeInfo) routeInfo.innerText = `${distanceKm} km (${dureeMin} min)`;
             parler(`Itinéraire trouvé. ${distanceKm} kilomètres, environ ${dureeMin} minutes.`);
 
-            if (route.legs && route.legs[0].steps && route.legs[0].steps.length > 0) {
-                const instr = route.legs[0].steps[0].maneuver.instruction;
-                if (instr) setTimeout(() => parler(instr), 2000);
-            }
-
             if (routeLayer) currentMap.removeLayer(routeLayer);
             routeLayer = L.polyline(route.geometry.coordinates.map(c => [c[1], c[0]]), { color: '#3b82f6', weight: 5, opacity: 0.8 }).addTo(currentMap);
             currentMap.fitBounds(routeLayer.getBounds(), { padding: [50, 50] });
@@ -194,7 +205,7 @@ async function verifierSignalisationRoute(lat, lon) {
     }
 }
 
-// --- 6. GESTION DES CLÉS API & FAVORIS ---
+// --- 6. GESTION DES CLÉS API & FAVORIS (DOMICILE / TRAVAIL) ---
 function getApiKey(name) { return localStorage.getItem(`api_key_${name}`) || ''; }
 
 function openApiModal() {
@@ -258,7 +269,7 @@ async function configurerFavori(type) {
             localStorage.setItem(`fav_${type}_lat`, data[0].lat);
             localStorage.setItem(`fav_${type}_lon`, data[0].lon);
             mettreAJourAffichageFavoris();
-            alert("Favori enregistré !");
+            alert("Favori enregistré avec succès !");
         } else {
             alert("Adresse introuvable.");
         }
