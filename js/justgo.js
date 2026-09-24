@@ -1,80 +1,114 @@
+// --- VARIABLES GLOBALES GPS ---
 let currentMap = null;
 let currentCoords = null;
 let routeLayer = null;
+let isMuted = false;
+let lastSpeedCheck = 0;
 
-function initJustGo() {
-    const mapContainer = document.getElementById('map');
-    if (!mapContainer) return; // Uniquement sur la page Just Go
+document.addEventListener("DOMContentLoaded", () => {
+    initMap();
+    setupAudioToggle();
+});
 
-    // --- 1. MODE JOUR / NUIT (Lié au thème du site) ---
-    const isDarkMode = document.documentElement.classList.contains('dark');
-    
-    // Style de tuiles adapté au mode (Sombre pour la nuit, Clair pour le jour)
-    const tileUrl = isDarkMode 
-        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-        : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+// --- 1. INITIALISATION DE LA CARTE ---
+function initMap() {
+    // Position par défaut (Bruxelles) en attendant le GPS
+    currentMap = L.map('map', { zoomControl: false }).setView([50.8503, 4.3517], 14);
 
-    currentMap = L.map('map', { zoomControl: false }).setView([50.8503, 4.3517], 15);
-    
-    L.tileLayer(tileUrl, {
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
-        subdomains: 'abcd'
+        attribution: '© OpenStreetMap'
     }).addTo(currentMap);
 
-    let isMuted = false;
-    let currentLimit = 50;
-
-    // --- 2. SYNTHÈSE VOCALE FRANÇAISE ---
-    function parler(texte) {
-        if (isMuted || !('speechSynthesis' in window)) return;
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(texte);
-        utterance.lang = 'fr-FR';
-        window.speechSynthesis.speak(utterance);
-    }
-
-    // --- 3. GÉOLOCALISATION & DONNÉES EN TEMPS RÉEL ---
+    // Suivi de la position GPS en temps réel
     if (navigator.geolocation) {
-        navigator.geolocation.watchPosition((position) => {
-            const lat = position.coords.latitude;
-            const lon = position.coords.longitude;
-            currentCoords = { lat, lon };
+        navigator.geolocation.watchPosition(
+            (position) => {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+                const speedMs = position.coords.speed || 0;
+                const speedKmh = Math.round(speedMs * 3.6);
 
-            const speedMs = position.coords.speed !== null ? position.coords.speed : 0;
-            const speedKmh = Math.round(speedMs * 3.6);
+                currentCoords = { lat, lon };
 
-            // Mise à jour de la vitesse et alerte clignotante (+10%)
-            document.getElementById('current-speed').innerText = speedKmh;
-            const speedometer = document.getElementById('speedometer');
-            if (speedKmh > currentLimit * 1.1) {
-                speedometer.classList.add('bg-red-600', 'animate-pulse', 'border-red-400', 'text-white');
-                speedometer.classList.remove('bg-white/90', 'dark:bg-gray-900/90', 'border-gray-300', 'dark:border-gray-700');
-            } else {
-                speedometer.classList.remove('bg-red-600', 'animate-pulse', 'border-red-400', 'text-white');
-                speedometer.classList.add('bg-white/90', 'dark:bg-gray-900/90', 'border-gray-300', 'dark:border-gray-700');
-            }
+                // Mise à jour de l'affichage de la vitesse
+                document.getElementById('current-speed').innerText = speedKmh;
 
-            // Recentrage carte et mise à jour météo
-            currentMap.setView([lat, lon], 17);
-            updateWeather(lat, lon);
+                // Centrer la carte sur la position actuelle
+                currentMap.setView([lat, lon], currentMap.getZoom());
 
-        }, (err) => console.error("GPS error", err), { enableHighAccuracy: true });
+                // Vérification de la signalisation routière (vitesse limite OSM)
+                verifierSignalisationRoute(lat, lon);
+            },
+            (error) => {
+                console.warn("Erreur de géolocalisation GPS", error);
+            },
+            { enableHighAccuracy: true, maximumAge: 1000, timeout: 5000 }
+        );
     }
-
-    // --- 4. GESTION DES BOUTONS ---
-    document.getElementById('btn-mute').addEventListener('click', () => {
-        isMuted = !isMuted;
-        document.getElementById('btn-mute').innerText = isMuted ? '🔇' : '🔊';
-        parler(isMuted ? "Guidage silencieux" : "Guidage vocal activé");
-    });
-
-    document.getElementById('btn-stop').addEventListener('click', () => {
-        parler("Guidage terminé");
-        window.location.href = "index.html";
-    });
 }
 
-// --- 5. CALCUL D'ITINÉRAIRE (OSRM) & INFOS REGROUPÉES ---
+// --- 2. SYNTHÈSE VOCALE ---
+function falar(text) { // Compatibilité alias
+    parler(text);
+}
+
+function parler(text) {
+    if (isMuted || !('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel(); // Stop la parole précédente
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'fr-FR';
+    utterance.rate = 1.0;
+    window.speechSynthesis.speak(utterance);
+}
+
+function setupAudioToggle() {
+    const btnMute = document.getElementById('btn-mute');
+    if (btnMute) {
+        btnMute.addEventListener('click', () => {
+            isMuted = !isMuted;
+            btnMute.innerText = isMuted ? '🔇' : '🔊';
+            parler(isMuted ? "Guidage vocal désactivé" : "Guidage vocal activé");
+        });
+    }
+
+    const btnStop = document.getElementById('btn-stop');
+    if (btnStop) {
+        btnStop.addEventListener('click', () => {
+            if (routeLayer) currentMap.removeLayer(routeLayer);
+            document.getElementById('info-route').innerText = "Itinéraire arrêté";
+            parler("Navigation annulée");
+        });
+    }
+}
+
+// --- 3. RECHERCHE DE DESTINATION ---
+async function rechercherDestination() {
+    const query = document.getElementById('search-input').value.trim();
+    if (!query) return;
+
+    parler(`Recherche de ${query}`);
+
+    try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
+        const data = await res.json();
+
+        if (data && data.length > 0) {
+            const destLat = parseFloat(data[0].lat);
+            const destLon = parseFloat(data[0].lon);
+            const displayName = data[0].display_name.split(',')[0];
+
+            naviguerVers(displayName, destLat, destLon);
+        } else {
+            alert("Destination introuvable.");
+            parler("Destination introuvable");
+        }
+    } catch (e) {
+        console.error("Erreur de recherche d'adresse", e);
+    }
+}
+
+// --- 4. CALCUL D'ITINÉRAIRE (OSRM) ---
 async function naviguerVers(nomDestination, destLat, destLon) {
     if (!currentCoords) {
         alert("Position GPS non fixée...");
@@ -85,8 +119,7 @@ async function naviguerVers(nomDestination, destLat, destLon) {
     document.getElementById('info-route').innerText = `Calcul vers ${nomDestination}...`;
 
     try {
-        // Requête à l'API publique OSRM pour tracer la route et obtenir distance/temps
-        const url = `https://router.project-osrm.org/route/v1/driving/${currentCoords.lon},${currentCoords.lat};${destLon},${destLat}?overview=full&geometries=geojson`;
+        const url = `https://router.project-osrm.org/route/v1/driving/${currentCoords.lon},${currentCoords.lat};${destLon},${destLat}?overview=full&geometries=geojson&steps=true&lang=fr`;
         const res = await fetch(url);
         const data = await res.json();
 
@@ -95,15 +128,16 @@ async function naviguerVers(nomDestination, destLat, destLon) {
             const distanceKm = (route.distance / 1000).toFixed(1);
             const dureeMin = Math.round(route.duration / 60);
 
-            // Affichage dans l'encart unifié
             document.getElementById('info-route').innerText = `${distanceKm} km (${dureeMin} min)`;
-            document.getElementById('info-traffic').innerText = "Fluide (TomTom OK)";
-            document.getElementById('info-traffic').className = "font-semibold text-emerald-500";
-            document.getElementById('info-osm').innerText = "Limites standard vérifiées";
-
             parler(`Itinéraire trouvé. ${distanceKm} kilomètres, environ ${dureeMin} minutes.`);
 
-            // Dessin de la ligne d'itinéraire sur la carte unique
+            if (route.legs && route.legs[0].steps && route.legs[0].steps.length > 0) {
+                const premiereInstruction = route.legs[0].steps[0].maneuver.instruction;
+                if (premiereInstruction) {
+                    setTimeout(() => parler(premiereInstruction), 2000);
+                }
+            }
+
             if (routeLayer) currentMap.removeLayer(routeLayer);
             
             const coordinates = route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
@@ -111,19 +145,109 @@ async function naviguerVers(nomDestination, destLat, destLon) {
             currentMap.fitBounds(routeLayer.getBounds(), { padding: [50, 50] });
         }
     } catch (e) {
-        console.error("Erreur de calcul d'itinéraire OSRM", e);
+        console.error("Erreur OSRM", e);
         document.getElementById('info-route').innerText = "Erreur de calcul";
     }
 }
 
-// --- 6. MÉTÉO EN DIRECT ---
-async function updateWeather(lat, lon) {
+// --- 5. SIGNALÉTIQUE ROUTIÈRE (Vitesse Limite OSM) ---
+async function verifierSignalisationRoute(lat, lon) {
+    const now = Date.now();
+    if (now - lastSpeedCheck < 15000) return; // Vérif toutes les 15s
+    lastSpeedCheck = now;
+
     try {
-        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code`);
-        const data = await res.json();
-        const temp = Math.round(data.current.temperature_2m);
-        document.getElementById('gps-weather-badge').innerText = `⛅ ${temp}°C`;
+        const radius = 25;
+        const query = `[out:json];way(around:${radius},${lat},${lon})[maxspeed];out;`;
+        const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
+
+        const response = await fetch(url);
+        const data = await response.json();
+
+        const signElement = document.getElementById('speed-limit-sign');
+        const valueElement = document.getElementById('speed-limit-value');
+
+        if (data.elements && data.elements.length > 0) {
+            for (const el of data.elements) {
+                if (el.tags && el.tags.maxspeed) {
+                    valueElement.innerText = el.tags.maxspeed;
+                    signElement.classList.remove('hidden');
+                    signElement.classList.add('flex');
+                    return;
+                }
+            }
+        }
+        signElement.classList.add('hidden');
+        signElement.classList.remove('flex');
     } catch (e) {
-        console.error("Erreur météo", e);
+        console.warn("Erreur signalétique", e);
     }
+}
+
+// --- 6. GESTION CENTRALISÉE DES CLÉS API ---
+function getApiKey(serviceName) {
+    return localStorage.getItem(`api_key_${serviceName}`) || '';
+}
+
+function openApiModal() {
+    let modal = document.getElementById('api-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'api-modal';
+        modal.className = 'fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4';
+        modal.innerHTML = `
+            <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 max-w-md w-full shadow-2xl flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2"><span>🔑</span> Gestionnaire des Clés API</h3>
+                    <button onclick="document.getElementById('api-modal').remove()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-sm font-bold">×</button>
+                </div>
+                
+                <p class="text-[11px] text-gray-500 dark:text-gray-400">
+                    Ces clés sont stockées localement dans votre navigateur et alimentent les services avancés du tableau de bord.
+                </p>
+
+                <div class="flex flex-col gap-3 text-xs">
+                    <!-- TomTom -->
+                    <div class="flex flex-col gap-1">
+                        <label class="font-semibold text-gray-700 dark:text-gray-300">TomTom (Trafic en temps réel)</label>
+                        <input type="password" id="key-tomtom" placeholder="Collez votre clé TomTom ici" class="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white outline-none focus:border-blue-500">
+                    </div>
+
+                    <!-- OpenWeather -->
+                    <div class="flex flex-col gap-1">
+                        <label class="font-semibold text-gray-700 dark:text-gray-300">OpenWeather (Météo optionnelle)</label>
+                        <input type="password" id="key-openweather" placeholder="Collez votre clé OpenWeather ici" class="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white outline-none focus:border-blue-500">
+                    </div>
+
+                    <!-- Mapbox -->
+                    <div class="flex flex-col gap-1">
+                        <label class="font-semibold text-gray-700 dark:text-gray-300">Mapbox (Styles de carte optionnels)</label>
+                        <input type="password" id="key-mapbox" placeholder="Collez votre clé Mapbox ici" class="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white outline-none focus:border-blue-500">
+                    </div>
+                </div>
+
+                <div class="flex gap-2 mt-2">
+                    <button onclick="document.getElementById('api-modal').remove()" class="flex-1 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 py-2 rounded-lg text-xs font-semibold transition-colors">Annuler</button>
+                    <button onclick="saveApiKeys()" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-lg text-xs font-semibold transition-colors">Enregistrer</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    } else {
+        modal.classList.remove('hidden');
+    }
+
+    // Charger les clés existantes
+    document.getElementById('key-tomtom').value = getApiKey('tomtom');
+    document.getElementById('key-openweather').value = getApiKey('openweather');
+    document.getElementById('key-mapbox').value = getApiKey('mapbox');
+}
+
+function saveApiKeys() {
+    localStorage.setItem('api_key_tomtom', document.getElementById('key-tomtom').value.trim());
+    localStorage.setItem('api_key_openweather', document.getElementById('key-openweather').value.trim());
+    localStorage.setItem('api_key_mapbox', document.getElementById('key-mapbox').value.trim());
+
+    document.getElementById('api-modal').remove();
+    alert("Clés API enregistrées avec succès dans le navigateur !");
 }
