@@ -3,34 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <title>Just Go - GPS Tesla</title>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = { darkMode: 'class' }
     </script>
-    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
 <body class="bg-gray-100 dark:bg-gray-950 text-gray-900 dark:text-white h-screen w-screen overflow-hidden relative transition-colors">
 
-    <!-- LA CARTE UNIQUE PLEIN ÉCRAN -->
+    <!-- 1. VOTRE EN-TÊTE DU SITE (Flottant au-dessus de la carte avec z-20) -->
+    <header class="absolute top-0 left-0 right-0 z-20 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 px-6 py-3 flex items-center justify-between shadow-md">
+        <div class="flex items-center gap-3">
+            <span class="text-xl">🚗</span>
+            <h1 class="font-bold text-sm tracking-wide">Just Go - Tesla Navigation</h1>
+        </div>
+        <!-- Bouton retour accueil si besoin -->
+        <a href="index.html" class="text-xs font-semibold bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 px-3 py-1.5 rounded-lg transition-colors">
+            Accueil
+        </a>
+    </header>
+
+    <!-- 2. LA CARTE (Occupe tout l'écran, mais passe sous l'en-tête grâce au z-0) -->
     <div id="map" class="absolute inset-0 z-0"></div>
 
-    <!-- CONTRÔLES HAUT (Mute, Arrêter) -->
-    <div class="absolute top-6 right-6 z-10 flex items-center gap-3">
-        <button id="btn-mute" class="bg-white/80 dark:bg-gray-900/80 hover:bg-gray-200 dark:hover:bg-gray-800 p-3 rounded-full backdrop-blur border border-gray-300 dark:border-gray-700 shadow-lg text-lg transition-colors">🔊</button>
+    <!-- 3. CONTRÔLES HAUT (Sous l'en-tête, décalés vers le bas avec top-20) -->
+    <div class="absolute top-20 right-6 z-10 flex items-center gap-3">
+        <button id="btn-mute" class="bg-white/90 dark:bg-gray-900/90 hover:bg-gray-200 dark:hover:bg-gray-800 p-3 rounded-full backdrop-blur border border-gray-300 dark:border-gray-700 shadow-lg text-lg transition-colors">🔊</button>
         <button id="btn-stop" class="bg-red-600 hover:bg-red-500 px-4 py-2 rounded-xl backdrop-blur font-bold text-sm text-white shadow-lg transition-colors">Arrêter</button>
     </div>
 
-    <!-- INDICATEUR DE VITESSE & FAVORIS (Bas à gauche) -->
+    <!-- 4. INDICATEUR DE VITESSE & FAVORIS (Bas à gauche) -->
     <div class="absolute bottom-6 left-6 z-10 flex items-end gap-4">
-        <!-- Vitesse -->
         <div id="speedometer" class="w-24 h-24 rounded-full bg-white/90 dark:bg-gray-900/90 border-4 border-gray-300 dark:border-gray-700 flex flex-col items-center justify-center shadow-2xl transition-all">
             <span id="current-speed" class="text-2xl font-black">0</span>
             <span class="text-[10px] text-gray-500 uppercase tracking-wider">km/h</span>
             <span id="speed-limit" class="absolute bottom-1 text-[9px] text-gray-400">Lim: 50</span>
         </div>
-        <!-- Favoris -->
         <div class="flex flex-col gap-2">
             <button onclick="naviguerVers('Domicile', 50.8503, 4.3517)" class="bg-white/90 dark:bg-gray-900/90 hover:bg-gray-200 dark:hover:bg-gray-800 backdrop-blur border border-gray-300 dark:border-gray-700 px-3 py-1.5 rounded-xl text-xs font-semibold shadow-lg flex items-center gap-1.5 transition-colors">
                 <span>🏠</span> Domicile
@@ -41,7 +49,7 @@
         </div>
     </div>
 
-    <!-- ENCART DE DONNÉES RÉUNIES (Bas au centre / droite) -->
+    <!-- 5. ENCART DE DONNÉES RÉUNIES (Bas à droite) -->
     <div class="absolute bottom-6 right-6 z-10 bg-white/90 dark:bg-gray-900/90 backdrop-blur border border-gray-300 dark:border-gray-700 rounded-2xl p-4 shadow-2xl w-80 flex flex-col gap-3 text-xs transition-colors">
         <div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-800 pb-2">
             <span class="font-bold flex items-center gap-1.5"><span>📊</span> Infos Route (OSRM / TomTom / OSM)</span>
