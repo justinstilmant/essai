@@ -1,40 +1,8 @@
 document.addEventListener("DOMContentLoaded", () => {
-    chargerParametresVisuels();
-    verifierConfiguration();
     chargerBoutonsPersonnalises();
 });
 
-function chargerParametresVisuels() {
-    const userName = localStorage.getItem('user_name') || 'Justin';
-    const nameEl = document.getElementById('header-username');
-    if (nameEl) nameEl.innerText = `Just Go - ${userName}`;
-
-    const bannerText = localStorage.getItem('banner_text');
-    const bannerBg = localStorage.getItem('banner_bg');
-    const bannerColor = localStorage.getItem('banner_color');
-
-    const bannerEl = document.getElementById('banner-text');
-    const containerEl = document.getElementById('banner-container');
-
-    if (bannerText && bannerEl) bannerEl.innerText = bannerText;
-    if (containerEl) {
-        if (bannerBg) containerEl.style.backgroundColor = bannerBg;
-        if (bannerColor) containerEl.style.color = bannerColor;
-    }
-}
-
-function verifierConfiguration() {
-    const url = localStorage.getItem('ha_url');
-    const token = localStorage.getItem('ha_token');
-    const warning = document.getElementById('ha-warning');
-    if (!url || !token) {
-        if (warning) warning.classList.remove('hidden');
-    } else {
-        if (warning) warning.classList.add('hidden');
-    }
-}
-
-// --- GESTION CONFIGURATION HA (MODAL) ---
+// --- GESTION DE LA CONFIGURATION HA ---
 function openHaConfigModal() {
     let modal = document.getElementById('ha-modal');
     if (modal) modal.remove();
@@ -75,17 +43,24 @@ function sauvegarderConfigHA() {
     localStorage.setItem('ha_url', url);
     localStorage.setItem('ha_token', token);
     document.getElementById('ha-modal').remove();
-    verifierConfiguration();
     alert("Configuration enregistrée avec succès !");
 }
 
-// --- AJOUT DE BOUTONS AVEC RÉCUPÉRATION DES ENTITÉS ---
-async function openAddButtonModal() {
-    const haUrl = localStorage.getItem('ha_url');
-    const haToken = localStorage.getItem('ha_token');
-
+// --- AJOUT DE BOUTON AVEC CACHE LOCAL DES ENTITÉS ---
+function openAddButtonModal() {
     let modal = document.getElementById('add-btn-modal');
     if (modal) modal.remove();
+
+    // Récupérer la liste des entités en cache (ou une liste par défaut si vide)
+    let savedEntities = JSON.parse(localStorage.getItem('ha_cached_entities') || '[]');
+    if (savedEntities.length === 0) {
+        savedEntities = [
+            { name: "Portail Entrée", entity: "cover.portail" },
+            { name: "Lumière Salon", entity: "light.salon" },
+            { name: "Lumière Cuisine", entity: "light.cuisine" }
+        ];
+        localStorage.setItem('ha_cached_entities', JSON.stringify(savedEntities));
+    }
 
     modal = document.createElement('div');
     modal.id = 'add-btn-modal';
@@ -106,10 +81,14 @@ async function openAddButtonModal() {
                     <input type="text" id="widget-icon" value="🚪" class="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white outline-none">
                 </div>
                 <div class="flex flex-col gap-1">
-                    <label class="font-semibold text-gray-700 dark:text-gray-300">Sélectionner l'appareil (Home Assistant)</label>
-                    <select id="widget-entity" class="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white outline-none">
-                        <option value="">Chargement des appareils...</option>
+                    <label class="font-semibold text-gray-700 dark:text-gray-300">Sélectionner un appareil (Cache local)</label>
+                    <select id="widget-entity-select" onchange="remplirNomParEntite()" class="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white outline-none">
+                        <option value="">-- Choisir un appareil enregistré --</option>
                     </select>
+                </div>
+                <div class="flex flex-col gap-1">
+                    <label class="font-semibold text-gray-700 dark:text-gray-300">Ou saisir l'ID de l'entité manuellement</label>
+                    <input type="text" id="widget-entity" placeholder="Ex: light.chambre" class="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white outline-none font-mono">
                 </div>
                 <div class="flex flex-col gap-1">
                     <label class="font-semibold text-gray-700 dark:text-gray-300">Type d'action</label>
@@ -129,57 +108,52 @@ async function openAddButtonModal() {
     `;
     document.body.appendChild(modal);
 
-    // Charger dynamiquement les entités depuis l'API de Home Assistant
-    if (haUrl && haToken) {
-        try {
-            const response = await fetch(`${haUrl}/api/states`, {
-                headers: {
-                    'Authorization': `Bearer ${haToken}`,
-                    'Content-Type': 'application/json',
-                }
-            });
-            if (response.ok) {
-                const states = await response.json();
-                const select = document.getElementById('widget-entity');
-                select.innerHTML = '<option value="">-- Choisir un appareil --</option>';
-                
-                // On trie les entités par ordre alphabétique
-                states.sort((a, b) => a.entity_id.localeCompare(b.entity_id));
+    // Remplir le menu déroulant avec le cache
+    const select = document.getElementById('widget-entity-select');
+    savedEntities.forEach(item => {
+        const opt = document.createElement('option');
+        opt.value = item.entity;
+        opt.textContent = `${item.name} (${item.entity})`;
+        select.appendChild(opt);
+    });
+}
 
-                states.forEach(entite => {
-                    const opt = document.createElement('option');
-                    opt.value = entite.entity_id;
-                    // Affiche l'ID et le nom amical si disponible
-                    const friendlyName = entite.attributes.friendly_name || entite.entity_id;
-                    opt.textContent = `${friendlyName} (${entite.entity_id})`;
-                    select.appendChild(opt);
-                });
-            } else {
-                document.getElementById('widget-entity').innerHTML = '<option value="">Erreur de chargement des entités</option>';
-            }
-        } catch (e) {
-            console.error("Impossible de joindre HA pour les entités", e);
-            document.getElementById('widget-entity').innerHTML = '<option value="">Impossible de joindre Home Assistant</option>';
-        }
-    } else {
-        document.getElementById('widget-entity').innerHTML = '<option value="">Veuillez d\'abord configurer votre token HA</option>';
+function remplirNomParEntite() {
+    const select = document.getElementById('widget-entity-select');
+    const entityInput = document.getElementById('widget-entity');
+    const nameInput = document.getElementById('widget-name');
+    
+    if (select.value) {
+        entityInput.value = select.value;
+        // Extrait le nom s'il est formaté proprement
+        const selectedOptionText = select.options[select.selectedIndex].text;
+        const cleanName = selectedOptionText.split(' (')[0];
+        if (!nameInput.value) nameInput.value = cleanName;
     }
 }
 
 function sauvegarderNouveauBouton() {
     const name = document.getElementById('widget-name').value.trim();
     const icon = document.getElementById('widget-icon').value.trim() || '🏠';
-    const entity = document.getElementById('widget-entity').value;
+    const entity = document.getElementById('widget-entity').value.trim();
     const service = document.getElementById('widget-service').value;
 
     if (!name || !entity) {
-        alert("Veuillez donner un nom et sélectionner une entité.");
+        alert("Veuillez remplir le nom et l'entité.");
         return;
     }
 
+    // Sauvegarder le bouton de la grille
     let boutons = JSON.parse(localStorage.getItem('ha_custom_buttons') || '[]');
     boutons.push({ id: Date.now(), name, icon, entity, service });
     localStorage.setItem('ha_custom_buttons', JSON.stringify(boutons));
+
+    // Ajouter l'entité au cache local si elle n'y est pas déjà
+    let savedEntities = JSON.parse(localStorage.getItem('ha_cached_entities') || '[]');
+    if (!savedEntities.some(e => e.entity === entity)) {
+        savedEntities.push({ name, entity });
+        localStorage.setItem('ha_cached_entities', JSON.stringify(savedEntities));
+    }
 
     document.getElementById('add-btn-modal').remove();
     chargerBoutonsPersonnalises();
@@ -251,13 +225,10 @@ async function executerAction(entityId, servicePath) {
             body: JSON.stringify({ entity_id: entityId })
         });
 
-        if (response.ok) {
-            console.log(`Action réussie pour ${entityId}`);
-        } else {
+        if (!response.ok) {
             alert("Erreur: Home Assistant a refusé la commande.");
         }
     } catch (error) {
-        console.error("Erreur réseau:", error);
         alert("Impossible de joindre Home Assistant via le Tailscale Funnel.");
     }
 }
