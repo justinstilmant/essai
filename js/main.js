@@ -770,3 +770,11 @@ async function deleteShortcut(docId, id) {
         console.error("Erreur lors de la suppression :", e);
     }
 }
+// Exemple d'initialisation de l'authentification anonyme au chargement de votre script principal
+firebase.auth().signInAnonymously()
+  .then(() => {
+    console.log("Connecté de manière sécurisée et transparente à Firebase !");
+  })
+  .catch((error) => {
+    console.error("Erreur d'authentification Firebase :", error);
+  });
