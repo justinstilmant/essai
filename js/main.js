@@ -778,3 +778,98 @@ firebase.auth().signInAnonymously()
   .catch((error) => {
     console.error("Erreur d'authentification Firebase :", error);
   });
+// --- AUTHENTIFICATION ANONYME SÉCURISÉE FIRESTORE ---
+firebase.auth().signInAnonymously()
+  .then(() => {
+    console.log("Connecté de manière sécurisée et transparente à Firebase !");
+  })
+  .catch((error) => {
+    console.error("Erreur d'authentification Firebase :", error);
+  });
+// --- AUTHENTIFICATION ANONYME SÉCURISÉE FIRESTORE ---
+firebase.auth().signInAnonymously()
+  .then(() => {
+    console.log("Connecté de manière sécurisée et transparente à Firebase !");
+  })
+  .catch((error) => {
+    console.error("Erreur d'authentification Firebase :", error);
+  });
+### 2. Code à ajouter dans `main.js`
+
+Ajoute ce code dans ton fichier `main.js`. Il gère l'état des connexions (Firestore, Home Assistant, clés API), affiche la barre en bas de l'écran avec des indicateurs de couleur, et génère la fenêtre de paramétrage. 
+
+```javascript
+document.addEventListener("DOMContentLoaded", () => {
+    // 1. État simulé/réel des connexions et de la sécurité
+    let systemStatus = {
+        firestore: { name: "Firestore", connected: false }, // Sera mis à jour par ta logique Firebase
+        homeAssistant: { name: "Home Assistant", connected: true },
+        security: { name: "Sécurité", status: "Active (Mot de passe)" },
+        apiKeys: [
+            { id: "weather_api", name: "API Météo", valid: true, expires: "2027-01-15" },
+            { id: "maps_api", name: "API Maps", valid: false, expires: "Expirée" }
+        ]
+    };
+
+    // 2. Fonction pour générer la barre de statut (Encart en bas)
+    function renderSecurityFooter() {
+        const container = document.getElementById("security-footer-container");
+        
+        // Indicateurs visuels (Pastilles de couleur)
+        const getIndicator = (isOk) => 
+            ``;
+
+        const html = `
+Système & Sécurité${getIndicator(systemStatus.firestore.connected)}${systemStatus.firestore.name}${getIndicator(systemStatus.homeAssistant.connected)}${systemStatus.homeAssistant.name}** ${systemStatus.security.status}${systemStatus.apiKeys.map(api => `    \({getIndicator(api.valid)}\){api.name}
+`).join('')}Paramétrer **`;
+
+container.innerHTML = html;
+document.getElementById("open-config-btn").addEventListener("click", openConfigModal);
+}// 3. Fonction pour générer et ouvrir la fenêtre de paramétrage (Modale)function openConfigModal() {const modalContainer = document.getElementById("security-config-modal-container");const html = `
+Paramètres de Connexion×Statut Firestore${systemStatus.firestore.connected ? 'Connecté' : 'Déconnecté'}
+Re-testerURL Home AssistantGestion des Clés API${systemStatus.apiKeys.map(api => `${api.name}`).join('')}AnnulerSauvegarder    `;
+
+    modalContainer.innerHTML = html;
+
+    // Événements de fermeture
+    const closeModal = () => modalContainer.innerHTML = "";
+    document.getElementById("close-config-btn").addEventListener("click", closeModal);
+    document.getElementById("cancel-config-btn").addEventListener("click", closeModal);
+    
+    // Fermer en cliquant à l'extérieur
+    document.getElementById("config-backdrop").addEventListener("click", (e) => {
+        if(e.target.id === "config-backdrop") closeModal();
+    });
+
+    // Sauvegarder
+    document.getElementById("save-config-btn").addEventListener("click", () => {
+        // Ici tu peux ajouter la logique pour sauvegarder les nouvelles clés ou URL
+        alert("Paramètres mis à jour (simulation)");
+        closeModal();
+        renderSecurityFooter(); // Met à jour l'affichage en bas
+    });
+}
+
+// --- Connexion réelle à Firestore (Optionnel) ---
+// Si tu utilises la configuration Firebase existante dans ton main.js, 
+// tu peux écouter l'état de la connexion comme ceci :
+/*
+import { getDatabase, ref, onValue } from "firebase/database";
+const db = getDatabase();
+const connectedRef = ref(db, ".info/connected");
+onValue(connectedRef, (snap) => {
+    if (snap.val() === true) {
+        systemStatus.firestore.connected = true;
+    } else {
+        systemStatus.firestore.connected = false;
+    }
+    renderSecurityFooter(); // Rafraîchit l'encart automatiquement
+});
+*/
+
+// Initialisation au chargement de la page
+renderSecurityFooter();
+});
+### Explications :
+1. **Légèreté du HTML :** Le HTML ne contient que deux `
+vides pour éviter de polluer ta page principale. Tout le code (structure + design Tailwind) est injecté dynamiquement. 2. **Couleurs d'état automatiques :** La fonctiongetIndicator crée de petites pastilles vertes ou rouges en fonction de l'état booléen (true/false) des connexions et de la validité des API. 3. **Paramétrage intégré :** Le clic sur le bouton ouvre une modale sombre (assortie aux styles habituels des tableaux de bord) avec des inputpour saisir les URLs ou les nouvelles clés API. 4. **Mise à jour Firestore :** J'ai laissé un bloc commenté à la fin. Puisque ton projet utilise déjà Firebase, tu peux utiliser ce fragment avec le.info/connected` pour que la pastille Firestore bascule en vert ou rouge en temps réel selon ta connexion internet et l'état du serveur Firebase
