@@ -1,32 +1,10 @@
-// ==========================================
-// TABLE DES MATIÈRES / STRUCTURE DU FICHIER
-// ==========================================
-// 1. Initialisation Firebase & Variables Globales
-// 2. Gestion du Chargement des Partiels & Navigation Active
-// 3. Gestion du Thème (Sombre / Clair)
-// 4. Fonctionnalités du Header (Horloge & Banderole Firestore)
-// 5. Gestion des Modales de la Banderole
-// 6. Gestion de la Sécurité Admin & Déverrouillage du Site
-// 7. Météo Locale (Open-Meteo)
-// 8. Raccourcis Paramétriques (CRUD complet, Drag & Drop & Modales)
-// 9. Authentification Anonyme Firebase
-// ==========================================
-
-
-// ==========================================
-// 1. INITIALISATION FIREBASE & VARIABLES GLOBALES
-// ==========================================
-// Initialisation de Firebase (projet "page-tesla")[cite: 1]
+// Initialisation de Firebase (projet "page-tesla")
 const firebaseConfig = { apiKey: "AIzaSyC...", authDomain: "page-tesla.firebaseapp.com", projectId: "page-tesla", storageBucket: "page-tesla.appspot.com", messagingSenderId: "1234567890", appId: "1:1234567890:web:abc123def456" };
 if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
 const db = firebase.firestore();
 
 let isAdmin = false;
 
-
-// ==========================================
-// 2. GESTION DU CHARGEMENT DES PARTIELS & NAVIGATION ACTIVE
-// ==========================================
 document.addEventListener("DOMContentLoaded", function() {
     function loadHTML(id, filename) {
         fetch(filename)
@@ -37,15 +15,17 @@ document.addEventListener("DOMContentLoaded", function() {
                 if (id === 'header-placeholder') {
                     initHeaderFeatures();
                     
-                    // --- Détection automatique de la page active ---
+                    // --- ICI : Détection automatique de la page active ---
                     const currentPath = window.location.pathname.split("/").pop() || "index.html";
                     const navLinks = document.querySelectorAll("header nav a");
                     
                     navLinks.forEach(link => {
                         const linkHref = link.getAttribute("href");
                         if (linkHref === currentPath) {
+                            // Style pour le lien actif (ex: fond bleu, texte blanc)
                             link.className = "px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white shadow";
                         } else {
+                            // Style pour les liens inactifs
                             link.className = "px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg";
                         }
                     });
@@ -57,10 +37,7 @@ document.addEventListener("DOMContentLoaded", function() {
     loadHTML('footer-placeholder', 'includes/footer.html');
 });
 
-
-// ==========================================
-// 3. GESTION DU THÈME (SOMBRE / CLAIR)
-// ==========================================
+// 2. Gestion du mode Sombre / Clair[cite: 1]
 function toggleDarkMode() {
     const html = document.documentElement;
     const icon = document.getElementById('theme-icon');
@@ -75,17 +52,14 @@ function toggleDarkMode() {
     }
 }
 
-// Application du thème enregistré dès le chargement[cite: 1]
+// Application du thème enregistré dès le chargement
 if (localStorage.getItem('theme') === 'light') {
     document.documentElement.classList.remove('dark');
 } else {
     document.documentElement.classList.add('dark');
 }
 
-
-// ==========================================
-// 4. FONCTIONNALITÉS DU HEADER (HORLOGE & BANDEROLE FIRESTORE)
-// ==========================================
+// 3. Fonctionnalités propres au Header (Horloge & Firestore Banderole)[cite: 1]
 function initHeaderFeatures() {
     // Horloge en direct
     function updateLiveClock() {
@@ -116,9 +90,13 @@ function applyBanner(text, color, size, effect, speed) {
     const safeText = text || 'Bienvenue Justin !';
     display.innerHTML = `${safeText}     •    `.repeat(6);
     
+    // 1. On nettoie les classes d'effets précédentes
     display.classList.remove('text-rainbow', 'neon-glow');
+    
+    // 2. On applique la base (taille et animation)
     display.className = `animate-marquee font-medium inline-block ${size || 'text-base'}`;
     
+    // 3. Gestion spécifique des effets
     if (effect === 'rainbow') {
         display.classList.add('text-rainbow');
         display.style.color = ''; 
@@ -131,15 +109,13 @@ function applyBanner(text, color, size, effect, speed) {
         display.style.color = color || '#60a5fa';
     }
 
+    // 4. Vitesse de défilement
     if (speed) {
         display.style.animationDuration = speed;
     }
 }
 
-
-// ==========================================
-// 5. GESTION DES MODALES DE LA BANDEROLE
-// ==========================================
+// Gestion des modales de la banderole[cite: 1]
 async function ouvrirModalBandole() {
     try {
         let docRef = db.collection("dashboards").doc("justin_config");
@@ -178,10 +154,7 @@ async function sauvegarderConfigBanderole() {
     }
 }
 
-
-// ==========================================
-// 6. GESTION DE LA SÉCURITÉ ADMIN & DÉVERROUILLAGE DU SITE
-// ==========================================
+// Gestion de la sécurité Admin[cite: 1]
 function ouvrirAuthModal() { document.getElementById('auth-modal').classList.remove('hidden'); }
 function fermerAuthModal() { document.getElementById('auth-modal').classList.add('hidden'); document.getElementById('admin-password').value = ''; }
 
@@ -196,10 +169,38 @@ function verifierAdmin() {
     }
 }
 
-// Vérification du verrouillage global du site au chargement
-document.addEventListener("DOMContentLoaded", () => {
-    if (sessionStorage.getItem('site_unlocked') !== 'true') {
-        const lockScreen = document.createElement('div');
-        lockScreen.id = 'site-lock-screen';
-        lockScreen.className = 'fixed inset-0 z-50 bg-gray-950 flex items-center justify-center p-4';
-        lockScreen.innerHTML = `
+// ==========================================
+// 1. MÉTÉO LOCALE (Open-Meteo)
+// ==========================================
+function initWeatherWidget() {
+    const weatherCity = document.getElementById('weather-city');
+    if (!weatherCity) return;
+
+    if (!navigator.geolocation) {
+        weatherCity.innerText = "GPS non supporté";
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(async (position) => {
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+
+        try {
+            const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=\({lat}&longitude=\){lon}&current=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto`);
+            const data = await response.json();
+
+            document.getElementById('weather-temp').innerText = `${Math.round(data.current.temperature_2m)}°C`;
+            document.getElementById('weather-wind').innerText = `${data.current.wind_speed_10m} km/h`;
+            document.getElementById('weather-rain').innerText = `${data.current.precipitation} mm`;
+            weatherCity.innerText = "Ma Position";
+            document.getElementById('weather-desc').innerText = getWeatherDescription(data.current.weather_code);
+            document.getElementById('weather-icon').innerText = getWeatherEmoji(data.current.weather_code);
+
+            const forecastContainer = document.getElementById('weather-forecast');
+            if (forecastContainer) {
+                let forecastHTML = '';
+                for (let i = 1; i <= 3; i++) {
+                    const date = new Date(data.daily.time[i]).toLocaleDateString('fr-FR', { weekday: 'short' });
+                    const maxTemp = Math.round(data.daily.temperature_2m_max[i]);
+                    const emoji = getWeatherEmoji(data.daily.weather_code[i]);
+                    forecastHTML += `
