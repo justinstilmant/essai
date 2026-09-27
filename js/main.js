@@ -487,4 +487,18 @@ for (let funcName in window) {
 if (funcName.startsWith('init') && typeof window[funcName] === 'function') {
 try {
 windowfuncName;
-} c
+} catch (e) {
+console.error(Erreur dans ${funcName}:, e);
+}
+}
+}
+}
+
+// --- AUTHENTIFICATION ANONYME SÉCURISÉE FIRESTORE ---
+firebase.auth().signInAnonymously()
+.then(() => {
+console.log("Connecté de manière sécurisée et transparente à Firebase !");
+})
+.catch((error) => {
+console.error("Erreur d'authentification Firebase :", error);
+});
