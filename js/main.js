@@ -18,13 +18,16 @@
 /* ============================================================
    1. INITIALISATION FIREBASE (projet "page-tesla")
    ============================================================ */
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-    apiKey: "AIzaSyC...",
-    authDomain: "page-tesla.firebaseapp.com",
-    projectId: "page-tesla",
-    storageBucket: "page-tesla.appspot.com",
-    messagingSenderId: "1234567890",
-    appId: "1:1234567890:web:abc123def456"
+  apiKey: "AIzaSyBodP_pojUNVIXE5oJwanIlLa9yKWaOPNI",
+  authDomain: "page-tesla.firebaseapp.com",
+  databaseURL: "https://page-tesla-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "page-tesla",
+  storageBucket: "page-tesla.firebasestorage.app",
+  messagingSenderId: "934154048830",
+  appId: "1:934154048830:web:ccba428fc3f6f1b29f886f",
+  measurementId: "G-M2E33GZD17"
 };
 
 if (!firebase.apps.length) {
