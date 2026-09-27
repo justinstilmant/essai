@@ -1,10 +1,36 @@
-// Initialisation de Firebase (projet "page-tesla")
-const firebaseConfig = { apiKey: "AIzaSyC...", authDomain: "page-tesla.firebaseapp.com", projectId: "page-tesla", storageBucket: "page-tesla.appspot.com", messagingSenderId: "1234567890", appId: "1:1234567890:web:abc123def456" };
-if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+/* =================================================================ato
+   1. INITIALISATION & CONFIGURATION FIREBASE
+   ================================================================ */
+const firebaseConfig = { 
+    apiKey: "AIzaSyC...", 
+    authDomain: "page-tesla.firebaseapp.com", 
+    projectId: "page-tesla", 
+    storageBucket: "page-tesla.appspot.com", 
+    messagingSenderId: "1234567890", 
+    appId: "1:1234567890:web:abc123def456" 
+};
+
+if (!firebase.apps.length) { 
+    firebase.initializeApp(firebaseConfig); 
+}
+
 const db = firebase.firestore();
+
+// Authentification anonyme sécurisée pour Firestore
+firebase.auth().signInAnonymously()
+  .then(() => {
+    console.log("Connecté de manière sécurisée et transparente à Firebase !");
+  })
+  .catch((error) => {
+    console.error("Erreur d'authentification Firebase :", error);
+  });
 
 let isAdmin = false;
 
+
+/* =================================================================
+   2. CHARGEMENT DES TEMPLATES (HEADER / FOOTER)
+   ================================================================ */
 document.addEventListener("DOMContentLoaded", function() {
     function loadHTML(id, filename) {
         fetch(filename)
@@ -15,7 +41,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 if (id === 'header-placeholder') {
                     initHeaderFeatures();
                     
-                    // --- Détection automatique de la page active ---
+                    // Détection automatique de la page active
                     const currentPath = window.location.pathname.split("/").pop() || "index.html";
                     const navLinks = document.querySelectorAll("header nav a");
                     
@@ -35,7 +61,10 @@ document.addEventListener("DOMContentLoaded", function() {
     loadHTML('footer-placeholder', 'includes/footer.html');
 });
 
-// 2. Gestion du mode Sombre / Clair
+
+/* =================================================================
+   3. GESTION DU MODE SOMBRE / CLAIR
+   ================================================================ */
 function toggleDarkMode() {
     const html = document.documentElement;
     const icon = document.getElementById('theme-icon');
@@ -57,7 +86,10 @@ if (localStorage.getItem('theme') === 'light') {
     document.documentElement.classList.add('dark');
 }
 
-// 3. Fonctionnalités propres au Header (Horloge & Firestore Banderole)
+
+/* =================================================================
+   4. FONCTIONNALITÉS DU HEADER (Horloge & Banderole Firestore)
+   ================================================================ */
 function initHeaderFeatures() {
     // Horloge en direct
     function updateLiveClock() {
@@ -93,7 +125,7 @@ function applyBanner(text, color, size, effect, speed) {
     
     if (effect === 'rainbow') {
         display.classList.add('text-rainbow');
-        display.style.color = ''; 
+        display.style.color = '';
         display.style.removeProperty('color');
     } else if (effect === 'neon') {
         display.classList.add('neon-glow');
@@ -147,9 +179,18 @@ async function sauvegarderConfigBanderole() {
     }
 }
 
-// Gestion de la sécurité Admin
-function ouvrirAuthModal() { document.getElementById('auth-modal').classList.remove('hidden'); }
-function fermerAuthModal() { document.getElementById('auth-modal').classList.add('hidden'); document.getElementById('admin-password').value = ''; }
+
+/* =================================================================
+   5. SÉCURITÉ ADMIN
+   ================================================================ */
+function ouvrirAuthModal() { 
+    document.getElementById('auth-modal').classList.remove('hidden'); 
+}
+
+function fermerAuthModal() { 
+    document.getElementById('auth-modal').classList.add('hidden'); 
+    document.getElementById('admin-password').value = ''; 
+}
 
 function verifierAdmin() {
     const pwd = document.getElementById('admin-password').value;
@@ -162,9 +203,10 @@ function verifierAdmin() {
     }
 }
 
-// ==========================================
-// 1. MÉTÉO LOCALE (Open-Meteo)
-// ==========================================
+
+/* =================================================================
+   6. MÉTÉO LOCALE (Open-Meteo)
+   ================================================================ */
 function initWeatherWidget() {
     const weatherCity = document.getElementById('weather-city');
     if (!weatherCity) return;
@@ -231,9 +273,9 @@ if (code >= 51 && code <= 67) return 'Pluies / Averses';
 return 'Couvert';
 }
 
-// ==========================================
-// 2. RACCOURCIS PARAMÉTRIQUES (Firestore + CRUD + Drag&Drop)
-// ==========================================
+/* =================================================================
+7. RACCOURCIS PARAMÉTRIQUES (Firestore + CRUD + Drag&Drop)
+================================================================ */
 function initShortcutsGrid() {
 setupEditableGrid('shortcuts-grid', 'justin_shortcuts', [
 { id: '1', name: 'Google', url: 'https://www.google.com', logo: '' },
@@ -306,6 +348,7 @@ function safeHostname(url) {
 try { return new URL(url).hostname; } catch(e) { return ''; }
 }
 
+// Modale d'ajout
 function openAddShortcutModal(docId) {
 let modal = document.getElementById('shortcut-modal');
 if (!modal) {
@@ -367,6 +410,7 @@ newSaveBtn.addEventListener('click', async () => {
 });
 }
 
+// Modale d'édition
 async function openEditShortcutModal(docId, id) {
 const docRef = db.collection("dashboards").doc(docId);
 const docSnap = await docRef.get();
@@ -425,6 +469,7 @@ newSaveBtn.addEventListener('click', async () => {
 });
 }
 
+// Suppression d'un raccourci
 async function deleteShortcut(docId, id) {
 if (!confirm("Voulez-vous supprimer ce raccourci ?")) return;
 try {
@@ -439,9 +484,9 @@ console.error("Erreur lors de la suppression :", e);
 }
 }
 
-// ==========================================
-// 3. SÉCURITÉ & LANCEMENT AUTOMATIQUE
-// ==========================================
+/* =================================================================
+8. SÉCURITÉ DE VERROUILLAGE & LANCEMENT AUTOMATIQUE
+================================================================ */
 document.addEventListener("DOMContentLoaded", () => {
 if (sessionStorage.getItem('site_unlocked') !== 'true') {
 const lockScreen = document.createElement('div');
@@ -493,12 +538,3 @@ console.error(Erreur dans ${funcName}:, e);
 }
 }
 }
-
-// --- AUTHENTIFICATION ANONYME SÉCURISÉE FIRESTORE ---
-firebase.auth().signInAnonymously()
-.then(() => {
-console.log("Connecté de manière sécurisée et transparente à Firebase !");
-})
-.catch((error) => {
-console.error("Erreur d'authentification Firebase :", error);
-});
