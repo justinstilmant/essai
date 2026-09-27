@@ -15,17 +15,15 @@ document.addEventListener("DOMContentLoaded", function() {
                 if (id === 'header-placeholder') {
                     initHeaderFeatures();
                     
-                    // --- ICI : Détection automatique de la page active ---
+                    // --- Détection automatique de la page active ---
                     const currentPath = window.location.pathname.split("/").pop() || "index.html";
                     const navLinks = document.querySelectorAll("header nav a");
                     
                     navLinks.forEach(link => {
                         const linkHref = link.getAttribute("href");
                         if (linkHref === currentPath) {
-                            // Style pour le lien actif (ex: fond bleu, texte blanc)
                             link.className = "px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white shadow";
                         } else {
-                            // Style pour les liens inactifs
                             link.className = "px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg";
                         }
                     });
@@ -37,7 +35,7 @@ document.addEventListener("DOMContentLoaded", function() {
     loadHTML('footer-placeholder', 'includes/footer.html');
 });
 
-// 2. Gestion du mode Sombre / Clair[cite: 1]
+// 2. Gestion du mode Sombre / Clair
 function toggleDarkMode() {
     const html = document.documentElement;
     const icon = document.getElementById('theme-icon');
@@ -59,7 +57,7 @@ if (localStorage.getItem('theme') === 'light') {
     document.documentElement.classList.add('dark');
 }
 
-// 3. Fonctionnalités propres au Header (Horloge & Firestore Banderole)[cite: 1]
+// 3. Fonctionnalités propres au Header (Horloge & Firestore Banderole)
 function initHeaderFeatures() {
     // Horloge en direct
     function updateLiveClock() {
@@ -69,7 +67,7 @@ function initHeaderFeatures() {
     setInterval(updateLiveClock, 1000);
     updateLiveClock();
 
-    // Synchro temps réel de la banderole via Firestore[cite: 1]
+    // Synchro temps réel de la banderole via Firestore
     db.collection("dashboards").doc("justin_config").onSnapshot((docSnap) => {
         if (docSnap.exists) {
             const data = docSnap.data();
@@ -82,7 +80,7 @@ function initHeaderFeatures() {
     });
 }
 
-// Rendu de la banderole[cite: 1]
+// Rendu de la banderole
 function applyBanner(text, color, size, effect, speed) {
     const display = document.getElementById('banner-text-display');
     if (!display) return;
@@ -90,13 +88,9 @@ function applyBanner(text, color, size, effect, speed) {
     const safeText = text || 'Bienvenue Justin !';
     display.innerHTML = `${safeText}     •    `.repeat(6);
     
-    // 1. On nettoie les classes d'effets précédentes
     display.classList.remove('text-rainbow', 'neon-glow');
-    
-    // 2. On applique la base (taille et animation)
     display.className = `animate-marquee font-medium inline-block ${size || 'text-base'}`;
     
-    // 3. Gestion spécifique des effets
     if (effect === 'rainbow') {
         display.classList.add('text-rainbow');
         display.style.color = ''; 
@@ -109,13 +103,12 @@ function applyBanner(text, color, size, effect, speed) {
         display.style.color = color || '#60a5fa';
     }
 
-    // 4. Vitesse de défilement
     if (speed) {
         display.style.animationDuration = speed;
     }
 }
 
-// Gestion des modales de la banderole[cite: 1]
+// Gestion des modales de la banderole
 async function ouvrirModalBandole() {
     try {
         let docRef = db.collection("dashboards").doc("justin_config");
@@ -154,7 +147,7 @@ async function sauvegarderConfigBanderole() {
     }
 }
 
-// Gestion de la sécurité Admin[cite: 1]
+// Gestion de la sécurité Admin
 function ouvrirAuthModal() { document.getElementById('auth-modal').classList.remove('hidden'); }
 function fermerAuthModal() { document.getElementById('auth-modal').classList.add('hidden'); document.getElementById('admin-password').value = ''; }
 
@@ -494,18 +487,4 @@ for (let funcName in window) {
 if (funcName.startsWith('init') && typeof window[funcName] === 'function') {
 try {
 windowfuncName;
-} catch (e) {
-console.error(Erreur dans ${funcName}:, e);
-}
-}
-}
-}
-
-// --- AUTHENTIFICATION ANONYME SÉCURISÉE FIRESTORE ---
-firebase.auth().signInAnonymously()
-.then(() => {
-console.log("Connecté de manière sécurisée et transparente à Firebase !");
-})
-.catch((error) => {
-console.error("Erreur d'authentification Firebase :", error);
-});
+} c
