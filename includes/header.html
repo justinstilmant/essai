@@ -14,7 +14,7 @@
             <button onclick="toggleDarkMode()" class="p-2 rounded-xl bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700 transition" title="Basculer Mode Jour/Nuit">
                 <span id="theme-icon">☀️</span>
             </button>
-            <button onclick="ouvrirAuthModal()" class="p-2 rounded-xl bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700 transition" title="Paramètres Admin">
+            <button id="admin-gear-btn" onclick="ouvrirAuthModal()" class="p-2 rounded-xl bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700 transition" title="Paramètres Admin">
                 <span>⚙️</span>
             </button>
         </div>
@@ -33,7 +33,7 @@
                 <span>Bienvenue Justin ! &nbsp;&nbsp;&nbsp;&nbsp;&bull;&nbsp;&nbsp;&nbsp;&nbsp;</span>
             </div>
         </div>
-        <button onclick="ouvrirModalBandole()" class="absolute right-2 top-1/2 -translate-y-1/2 opacity-20 hover:opacity-100 transition-opacity bg-gray-800/80 text-white text-xs px-2 py-1 rounded shadow z-10" title="Personnaliser la banderole">
+        <button onclick="ouvrirModalBandole()" class="admin-only absolute right-2 top-1/2 -translate-y-1/2 opacity-20 hover:opacity-100 transition-opacity bg-gray-800/80 text-white text-xs px-2 py-1 rounded shadow z-10" title="Personnaliser la banderole">
             ⚙️
         </button>
     </div>
@@ -97,11 +97,12 @@
 <!-- Modal d'authentification Admin -->
 <div id="auth-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
     <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-6 rounded-2xl shadow-2xl max-w-sm w-full flex flex-col gap-4">
-        <h3 class="text-lg font-bold">🔒 Sécurité Admin</h3>
-        <p class="text-xs text-gray-500 dark:text-gray-400">Entrez le mot de passe pour déverrouiller les options.</p>
-        <input type="password" id="admin-password" placeholder="Mot de passe..." class="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white p-2.5 rounded-lg text-sm w-full outline-none">
+        <h3 class="text-lg font-bold">🔒 Connexion Admin</h3>
+        <p class="text-xs text-gray-500 dark:text-gray-400">Connecte-toi avec ton compte administrateur pour déverrouiller les options.</p>
+        <input type="email" id="admin-email" placeholder="E-mail..." autocomplete="username" class="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white p-2.5 rounded-lg text-sm w-full outline-none">
+        <input type="password" id="admin-password" placeholder="Mot de passe..." autocomplete="current-password" class="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white p-2.5 rounded-lg text-sm w-full outline-none">
         <div class="flex gap-2">
-            <button onclick="verifierAdmin()" class="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg text-sm flex-1">Valider</button>
+            <button onclick="verifierAdmin()" class="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg text-sm flex-1">Se connecter</button>
             <button onclick="fermerAuthModal()" class="bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 p-2 rounded-lg text-sm flex-1">Annuler</button>
         </div>
     </div>
