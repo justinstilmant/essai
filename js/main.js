@@ -2,15 +2,16 @@
    MAIN.JS — Tableau de bord personnel (Firebase / Firestore)
    Structure du fichier :
      1. Initialisation Firebase
-     2. Chargement Header / Footer + navigation active
-     3. Mode Sombre / Clair
-     4. Header : horloge live + banderole Firestore
-     5. Modales de configuration de la banderole
-     6. Sécurité Admin (mot de passe simple)
-     7. Météo locale (Open-Meteo)
-     8. Raccourcis paramétrables (CRUD + Drag & Drop Firestore)
-     9. Écran de verrouillage du site + lancement auto des fonctions "init..."
-    10. Authentification anonyme Firebase
+     2. Utilitaire d'échappement HTML (sécurité)
+     3. Chargement Header / Footer + navigation active
+     4. Mode Sombre / Clair
+     5. Header : horloge live + banderole Firestore
+     6. Modales de configuration de la banderole
+     7. Sécurité Admin (mot de passe simple)
+     8. Météo locale (Open-Meteo)
+     9. Raccourcis paramétrables (CRUD + Drag & Drop Firestore)
+    10. Écran de verrouillage du site + lancement auto des fonctions "init..."
+    11. Authentification anonyme Firebase
    ============================================================ */
 
 
@@ -35,7 +36,23 @@ let isAdmin = false;
 
 
 /* ============================================================
-   2. CHARGEMENT HEADER / FOOTER + DÉTECTION DE LA PAGE ACTIVE
+   2. ÉCHAPPEMENT HTML — évite qu'un texte saisi (banderole,
+   nom de raccourci, URL, logo...) ne casse la mise en page ou
+   n'injecte du code lorsqu'il est réinjecté via innerHTML.
+   ============================================================ */
+function escapeHtml(value) {
+    if (value === undefined || value === null) return '';
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+
+/* ============================================================
+   3. CHARGEMENT HEADER / FOOTER + DÉTECTION DE LA PAGE ACTIVE
    ============================================================ */
 document.addEventListener("DOMContentLoaded", function () {
     function loadHTML(id, filename) {
@@ -71,7 +88,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
 /* ============================================================
-   3. MODE SOMBRE / CLAIR
+   4. MODE SOMBRE / CLAIR
    ============================================================ */
 function toggleDarkMode() {
     const html = document.documentElement;
@@ -96,7 +113,7 @@ if (localStorage.getItem('theme') === 'light') {
 
 
 /* ============================================================
-   4. HEADER : HORLOGE EN DIRECT & BANDEROLE (Firestore realtime)
+   5. HEADER : HORLOGE EN DIRECT & BANDEROLE (Firestore realtime)
    ============================================================ */
 function initHeaderFeatures() {
     // Horloge en direct
@@ -117,6 +134,8 @@ function initHeaderFeatures() {
         } else {
             applyBanner('Bienvenue Justin !', '#60a5fa', 'text-base', 'normal', '18s');
         }
+    }, (error) => {
+        console.error("Erreur de synchronisation de la banderole (vérifier les règles Firestore) :", error);
     });
 }
 
@@ -125,7 +144,7 @@ function applyBanner(text, color, size, effect, speed) {
     const display = document.getElementById('banner-text-display');
     if (!display) return;
 
-    const safeText = text || 'Bienvenue Justin !';
+    const safeText = escapeHtml(text || 'Bienvenue Justin !');
     display.innerHTML = `<span>${safeText} &nbsp;&nbsp;&nbsp;&nbsp;&bull;&nbsp;&nbsp;&nbsp;&nbsp;</span>`.repeat(6);
 
     // 1. On nettoie les classes d'effets précédentes
@@ -157,7 +176,7 @@ function applyBanner(text, color, size, effect, speed) {
 
 
 /* ============================================================
-   5. MODALES DE CONFIGURATION DE LA BANDEROLE
+   6. MODALES DE CONFIGURATION DE LA BANDEROLE
    ============================================================ */
 async function ouvrirModalBandole() {
     try {
@@ -173,6 +192,7 @@ async function ouvrirModalBandole() {
 
         document.getElementById('banner-modal').classList.remove('hidden');
     } catch (e) {
+        console.error("Erreur lors du chargement des options de la banderole :", e);
         alert("Erreur lors du chargement des options de la banderole.");
     }
 }
@@ -193,13 +213,16 @@ async function sauvegarderConfigBanderole() {
         await docRef.set({ bannerText, bannerColor, bannerSize, bannerEffect, bannerSpeed }, { merge: true });
         fermerModalBandole();
     } catch (e) {
-        alert("Erreur d'enregistrement de la banderole.");
+        // Si ça échoue ici, c'est très probablement les règles Firestore
+        // qui refusent l'écriture (voir la console pour le détail de l'erreur).
+        console.error("Erreur d'enregistrement de la banderole :", e);
+        alert("Erreur d'enregistrement de la banderole. (Voir la console : c'est probablement un souci de permissions Firestore.)");
     }
 }
 
 
 /* ============================================================
-   6. SÉCURITÉ ADMIN
+   7. SÉCURITÉ ADMIN
    ============================================================ */
 function ouvrirAuthModal() {
     document.getElementById('auth-modal').classList.remove('hidden');
@@ -223,7 +246,7 @@ function verifierAdmin() {
 
 
 /* ============================================================
-   7. MÉTÉO LOCALE (Open-Meteo)
+   8. MÉTÉO LOCALE (Open-Meteo)
    ============================================================ */
 function initWeatherWidget() {
     const weatherCity = document.getElementById('weather-city');
@@ -293,7 +316,7 @@ function getWeatherDescription(code) {
 
 
 /* ============================================================
-   8. RACCOURCIS PARAMÉTRABLES (Firestore + CRUD + Drag & Drop)
+   9. RACCOURCIS PARAMÉTRABLES (Firestore + CRUD + Drag & Drop)
    ============================================================ */
 function initShortcutsGrid() {
     setupEditableGrid('shortcuts-grid', 'justin_shortcuts', [
@@ -322,20 +345,24 @@ function setupEditableGrid(containerId, docId, defaultItems) {
 
         // Génération du HTML des raccourcis existants
         let html = shortcuts.map(item => {
-            const logoSrc = item.logo ? item.logo : `https://www.google.com/s2/favicons?domain=${safeHostname(item.url)}&sz=128`;
+            const logoSrc = escapeHtml(item.logo ? item.logo : `https://www.google.com/s2/favicons?domain=${safeHostname(item.url)}&sz=128`);
+            const safeName = escapeHtml(item.name);
+            const safeUrl = escapeHtml(item.url);
+            const safeId = escapeHtml(item.id);
+            const safeDocId = escapeHtml(docId);
 
             return `
-                <div data-id="${item.id}" class="group relative bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 flex flex-col items-center justify-center gap-2 shadow-sm hover:shadow-md hover:border-blue-500 transition-all cursor-grab active:cursor-grabbing">
+                <div data-id="${safeId}" class="group relative bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 flex flex-col items-center justify-center gap-2 shadow-sm hover:shadow-md hover:border-blue-500 transition-all cursor-grab active:cursor-grabbing">
 
                     <!-- Boutons d'action (visibles au survol) -->
                     <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity z-10">
-                        <button onclick="openEditShortcutModal('${docId}', '${item.id}')" class="bg-blue-600 hover:bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px]" title="Modifier">✏️</button>
-                        <button onclick="deleteShortcut('${docId}', '${item.id}')" class="bg-red-600 hover:bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px]" title="Supprimer">×</button>
+                        <button onclick="openEditShortcutModal('${safeDocId}', '${safeId}')" class="bg-blue-600 hover:bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px]" title="Modifier">✏️</button>
+                        <button onclick="deleteShortcut('${safeDocId}', '${safeId}')" class="bg-red-600 hover:bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px]" title="Supprimer">×</button>
                     </div>
 
-                    <a href="${item.url}" target="_blank" class="flex flex-col items-center gap-2 w-full">
-                        <img src="${logoSrc}" alt="${item.name}" class="w-10 h-10 object-contain rounded-lg" onerror="this.src='https://via.placeholder.com/40?text=?'">
-                        <span class="text-xs font-medium text-gray-800 dark:text-gray-200 truncate w-full text-center">${item.name}</span>
+                    <a href="${safeUrl}" target="_blank" class="flex flex-col items-center gap-2 w-full">
+                        <img src="${logoSrc}" alt="${safeName}" class="w-10 h-10 object-contain rounded-lg" onerror="this.src='https://via.placeholder.com/40?text=?'">
+                        <span class="text-xs font-medium text-gray-800 dark:text-gray-200 truncate w-full text-center">${safeName}</span>
                     </a>
                 </div>
             `;
@@ -343,7 +370,7 @@ function setupEditableGrid(containerId, docId, defaultItems) {
 
         // Ajout de la carte "+" pour créer un nouveau raccourci
         html += `
-            <div onclick="openAddShortcutModal('${docId}')" class="bg-white/50 dark:bg-gray-900/50 border-2 border-dashed border-gray-300 dark:border-gray-800 rounded-xl p-4 flex flex-col items-center justify-center gap-2 hover:border-blue-500 dark:hover:border-blue-500 transition-all cursor-pointer">
+            <div onclick="openAddShortcutModal('${escapeHtml(docId)}')" class="bg-white/50 dark:bg-gray-900/50 border-2 border-dashed border-gray-300 dark:border-gray-800 rounded-xl p-4 flex flex-col items-center justify-center gap-2 hover:border-blue-500 dark:hover:border-blue-500 transition-all cursor-pointer">
                 <span class="text-xl text-gray-400 font-bold">+</span>
                 <span class="text-[11px] font-medium text-gray-500">Ajouter</span>
             </div>
@@ -371,6 +398,8 @@ function setupEditableGrid(containerId, docId, defaultItems) {
                 }
             });
         }
+    }, (error) => {
+        console.error(`Erreur de synchronisation de la grille "${containerId}" (vérifier les règles Firestore) :`, error);
     });
 }
 
@@ -378,7 +407,7 @@ function safeHostname(url) {
     try { return new URL(url).hostname; } catch (e) { return ''; }
 }
 
-// 8.1 MODALE D'AJOUT
+// 9.1 MODALE D'AJOUT
 function openAddShortcutModal(docId) {
     let modal = document.getElementById('shortcut-modal');
     if (!modal) {
@@ -444,11 +473,12 @@ function openAddShortcutModal(docId) {
             console.log("Raccourci ajouté et enregistré dans Firestore !");
         } catch (e) {
             console.error("Erreur lors de l'ajout :", e);
+            alert("Erreur lors de l'ajout du raccourci (voir la console).");
         }
     });
 }
 
-// 8.2 MODALE D'ÉDITION (LOGO / NOM / URL)
+// 9.2 MODALE D'ÉDITION (LOGO / NOM / URL)
 async function openEditShortcutModal(docId, id) {
     const docRef = db.collection("dashboards").doc(docId);
     const docSnap = await docRef.get();
@@ -512,11 +542,12 @@ async function openEditShortcutModal(docId, id) {
             console.log("Modification enregistrée dans Firestore !");
         } catch (e) {
             console.error("Erreur lors de la modification :", e);
+            alert("Erreur lors de la modification du raccourci (voir la console).");
         }
     });
 }
 
-// 8.3 SUPPRESSION D'UN RACCOURCI
+// 9.3 SUPPRESSION D'UN RACCOURCI
 async function deleteShortcut(docId, id) {
     if (!confirm("Voulez-vous supprimer ce raccourci ?")) return;
     try {
@@ -529,12 +560,13 @@ async function deleteShortcut(docId, id) {
         }
     } catch (e) {
         console.error("Erreur lors de la suppression :", e);
+        alert("Erreur lors de la suppression du raccourci (voir la console).");
     }
 }
 
 
 /* ============================================================
-   9. ÉCRAN DE VERROUILLAGE DU SITE + LANCEMENT AUTO DES "init..."
+   10. ÉCRAN DE VERROUILLAGE DU SITE + LANCEMENT AUTO DES "init..."
    ============================================================ */
 document.addEventListener("DOMContentLoaded", () => {
     if (sessionStorage.getItem('site_unlocked') !== 'true') {
@@ -591,7 +623,7 @@ function lancerToutesLesFonctions() {
 
 
 /* ============================================================
-   10. AUTHENTIFICATION ANONYME FIREBASE
+   11. AUTHENTIFICATION ANONYME FIREBASE
    ============================================================ */
 firebase.auth().signInAnonymously()
     .then(() => {

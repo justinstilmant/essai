@@ -186,19 +186,26 @@ function chargerBoutonsPersonnalises() {
 
     grid.innerHTML = '';
     boutons.forEach(b => {
+        // Échappement : ces valeurs viennent d'un formulaire utilisateur,
+        // on évite qu'un nom/entité contenant du HTML ne casse la page.
+        const safeIcon = escapeHtml(b.icon);
+        const safeName = escapeHtml(b.name);
+        const safeEntity = escapeHtml(b.entity);
+        const safeService = escapeHtml(b.service);
+
         const card = document.createElement('div');
         card.className = 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-5 rounded-2xl shadow-sm flex flex-col justify-between gap-4 relative group';
         card.innerHTML = `
             <div class="flex items-center justify-between">
-                <span class="text-2xl">${b.icon}</span>
+                <span class="text-2xl">${safeIcon}</span>
                 <button onclick="supprimerBouton(${b.id})" class="text-gray-400 hover:text-red-500 text-xs font-bold cursor-pointer" title="Supprimer">×</button>
             </div>
             <div>
-                <h3 class="text-sm font-bold text-gray-900 dark:text-white">${b.name}</h3>
-                <p class="text-[10px] text-gray-500 font-mono">${b.entity}</p>
+                <h3 class="text-sm font-bold text-gray-900 dark:text-white">${safeName}</h3>
+                <p class="text-[10px] text-gray-500 font-mono">${safeEntity}</p>
             </div>
             <div>
-                <button onclick="executerAction('${b.entity}', '${b.service}')" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-xl text-xs font-semibold transition-colors shadow-md cursor-pointer">Action</button>
+                <button onclick="executerAction('${safeEntity}', '${safeService}')" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-xl text-xs font-semibold transition-colors shadow-md cursor-pointer">Action</button>
             </div>
         `;
         grid.appendChild(card);

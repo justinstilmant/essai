@@ -7,6 +7,12 @@
     <script>
         tailwind.config = { darkMode: 'class' }
     </script>
+    <!-- Firebase SDK (obligatoire : main.js en dépend dès sa première ligne,
+         sans ces scripts la page plantait et le verrouillage par mot de passe
+         était contourné) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
 <body class="bg-gray-100 dark:bg-gray-950 text-gray-900 dark:text-white h-screen w-screen overflow-hidden relative transition-colors">
