@@ -36,3 +36,14 @@
 .neon-glow {
     text-shadow: 0 0 8px currentColor, 0 0 20px currentColor, 0 0 30px currentColor;
 }
+
+/* ============================================================
+   Visibilité des actions réservées à l'administrateur.
+   main.js ajoute/retire la classe "is-admin" sur <body> selon
+   l'état de connexion Firebase (voir updateAdminUI()) — tout
+   élément marqué "admin-only" est masqué tant que ce n'est pas
+   le cas, sans avoir à toucher chaque bouton en JavaScript.
+   ============================================================ */
+body:not(.is-admin) .admin-only {
+    display: none !important;
+}

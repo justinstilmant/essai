@@ -224,7 +224,43 @@ async function sauvegarderConfigBanderole() {
 /* ============================================================
    7. SÉCURITÉ ADMIN
    ============================================================ */
+
+// Firebase nous informe en temps réel de qui est connecté (ou personne).
+// isAdmin est maintenant piloté par une vraie authentification, plus par
+// une simple variable locale devinable.
+let currentAdminUser = null;
+
+firebase.auth().onAuthStateChanged((user) => {
+    currentAdminUser = user;
+    isAdmin = !!user;
+    updateAdminUI();
+});
+
+// Met à jour l'apparence du bouton ⚙️ et l'affichage de toutes
+// les actions admin-only (ajout/modification/suppression, banderole,
+// config Home Assistant...) selon l'état de connexion
+function updateAdminUI() {
+    document.body.classList.toggle('is-admin', isAdmin);
+
+    const gearBtn = document.getElementById('admin-gear-btn');
+    if (!gearBtn) return;
+    if (isAdmin) {
+        gearBtn.title = `Connecté (${currentAdminUser.email}) — cliquer pour se déconnecter`;
+        gearBtn.classList.add('ring-2', 'ring-emerald-500');
+    } else {
+        gearBtn.title = "Paramètres Admin";
+        gearBtn.classList.remove('ring-2', 'ring-emerald-500');
+    }
+}
+
 function ouvrirAuthModal() {
+    if (isAdmin) {
+        // Déjà connecté : proposer directement la déconnexion.
+        if (confirm(`Connecté en tant que ${currentAdminUser.email}.\nSe déconnecter ?`)) {
+            deconnexionAdmin();
+        }
+        return;
+    }
     document.getElementById('auth-modal').classList.remove('hidden');
 }
 
@@ -233,15 +269,27 @@ function fermerAuthModal() {
     document.getElementById('admin-password').value = '';
 }
 
-function verifierAdmin() {
+async function verifierAdmin() {
+    const email = document.getElementById('admin-email').value.trim();
     const pwd = document.getElementById('admin-password').value;
-    if (pwd === "justin2026" || pwd === "admin") {
-        isAdmin = true;
+
+    if (!email || !pwd) {
+        alert("Merci de renseigner l'e-mail et le mot de passe.");
+        return;
+    }
+
+    try {
+        await firebase.auth().signInWithEmailAndPassword(email, pwd);
         fermerAuthModal();
         alert("Mode Admin activé !");
-    } else {
-        alert("Mot de passe incorrect.");
+    } catch (e) {
+        console.error("Erreur de connexion admin :", e);
+        alert("E-mail ou mot de passe incorrect.");
     }
+}
+
+function deconnexionAdmin() {
+    firebase.auth().signOut();
 }
 
 
@@ -354,8 +402,8 @@ function setupEditableGrid(containerId, docId, defaultItems) {
             return `
                 <div data-id="${safeId}" class="group relative bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 flex flex-col items-center justify-center gap-2 shadow-sm hover:shadow-md hover:border-blue-500 transition-all cursor-grab active:cursor-grabbing">
 
-                    <!-- Boutons d'action (visibles au survol) -->
-                    <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity z-10">
+                    <!-- Boutons d'action (visibles au survol, réservés à l'admin) -->
+                    <div class="admin-only absolute top-2 right-2 opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity z-10">
                         <button onclick="openEditShortcutModal('${safeDocId}', '${safeId}')" class="bg-blue-600 hover:bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px]" title="Modifier">✏️</button>
                         <button onclick="deleteShortcut('${safeDocId}', '${safeId}')" class="bg-red-600 hover:bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px]" title="Supprimer">×</button>
                     </div>
@@ -368,9 +416,9 @@ function setupEditableGrid(containerId, docId, defaultItems) {
             `;
         }).join('');
 
-        // Ajout de la carte "+" pour créer un nouveau raccourci
+        // Ajout de la carte "+" pour créer un nouveau raccourci (admin uniquement)
         html += `
-            <div onclick="openAddShortcutModal('${escapeHtml(docId)}')" class="bg-white/50 dark:bg-gray-900/50 border-2 border-dashed border-gray-300 dark:border-gray-800 rounded-xl p-4 flex flex-col items-center justify-center gap-2 hover:border-blue-500 dark:hover:border-blue-500 transition-all cursor-pointer">
+            <div onclick="openAddShortcutModal('${escapeHtml(docId)}')" class="admin-only bg-white/50 dark:bg-gray-900/50 border-2 border-dashed border-gray-300 dark:border-gray-800 rounded-xl p-4 flex flex-col items-center justify-center gap-2 hover:border-blue-500 dark:hover:border-blue-500 transition-all cursor-pointer">
                 <span class="text-xl text-gray-400 font-bold">+</span>
                 <span class="text-[11px] font-medium text-gray-500">Ajouter</span>
             </div>
@@ -623,12 +671,10 @@ function lancerToutesLesFonctions() {
 
 
 /* ============================================================
-   11. AUTHENTIFICATION ANONYME FIREBASE
+   11. NOTE
+   ============================================================
+   L'ancienne connexion anonyme automatique a été retirée : elle
+   n'est plus nécessaire car la lecture est publique (règle Firestore
+   "allow read: if true") et l'écriture est désormais réservée au
+   compte admin connecté via verifierAdmin() ci-dessus (section 7).
    ============================================================ */
-firebase.auth().signInAnonymously()
-    .then(() => {
-        console.log("Connecté de manière sécurisée et transparente à Firebase !");
-    })
-    .catch((error) => {
-        console.error("Erreur d'authentification Firebase :", error);
-    });
