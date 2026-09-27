@@ -204,3 +204,308 @@ function initWeatherWidget() {
                     const maxTemp = Math.round(data.daily.temperature_2m_max[i]);
                     const emoji = getWeatherEmoji(data.daily.weather_code[i]);
                     forecastHTML += `
+${date}
+${emoji}
+${maxTemp}°C
+
+`;
+}
+forecastContainer.innerHTML = forecastHTML;
+}
+
+    } catch (e) {
+        console.error("Erreur météo", e);
+        weatherCity.innerText = "Erreur météo";
+    }
+}, () => {
+    weatherCity.innerText = "GPS refusé";
+});
+}
+
+function getWeatherEmoji(code) {
+if (code === 0) return '☀️';
+if (code >= 1 && code <= 3) return '⛅';
+if (code >= 51 && code <= 67) return '🌧️';
+if (code >= 71 && code <= 77) return '❄️';
+if (code >= 95) return '⚡';
+return '☁️';
+}
+
+function getWeatherDescription(code) {
+if (code === 0) return 'Grand soleil';
+if (code >= 1 && code <= 3) return 'Partiellement nuageux';
+if (code >= 51 && code <= 67) return 'Pluies / Averses';
+return 'Couvert';
+}
+
+// ==========================================
+// 2. RACCOURCIS PARAMÉTRIQUES (Firestore + CRUD + Drag&Drop)
+// ==========================================
+function initShortcutsGrid() {
+setupEditableGrid('shortcuts-grid', 'justin_shortcuts', [
+{ id: '1', name: 'Google', url: 'https://www.google.com', logo: '' },
+{ id: '2', name: 'GitHub', url: 'https://github.com', logo: '' }
+]);
+
+setupEditableGrid('multimedia-grid', 'justin_multimedia_shortcuts', [
+    { id: '1', name: 'YouTube', url: 'https://www.youtube.com', logo: '' },
+    { id: '2', name: 'Netflix', url: 'https://www.netflix.com', logo: '' }
+]);
+}
+
+function setupEditableGrid(containerId, docId, defaultItems) {
+const grid = document.getElementById(containerId);
+if (!grid) return;
+
+db.collection("dashboards").doc(docId).onSnapshot((docSnap) => {
+    let shortcuts = [];
+    if (docSnap.exists && docSnap.data().items) {
+        shortcuts = docSnap.data().items;
+    } else {
+        shortcuts = defaultItems;
+    }
+
+    let html = shortcuts.map(item => {
+        const logoSrc = item.logo ? item.logo : `https://www.google.com/s2/favicons?domain=${safeHostname(item.url)}&sz=128`;
+
+        return `
+✏️
+×
+
+[
+
+${item.name}
+](${item.url})
+
+`;
+}).join('');
+
+html += `
+
+Ajouter
+
+    `;
+
+    grid.innerHTML = html;
+
+    if (typeof Sortable !== 'undefined') {
+        Sortable.create(grid, {
+            animation: 150,
+            onEnd: async function () {
+                const newOrder = Array.from(grid.children)
+                    .filter(el => el.hasAttribute('data-id'))
+                    .map(el => {
+                        const id = el.getAttribute('data-id');
+                        return shortcuts.find(s => s.id === id);
+                    });
+                try {
+                    await db.collection("dashboards").doc(docId).set({ items: newOrder }, { merge: true });
+                } catch (e) {
+                    console.error("Erreur de sauvegarde de l'ordre :", e);
+                }
+            }
+        });
+    }
+});
+}
+
+function safeHostname(url) {
+try { return new URL(url).hostname; } catch(e) { return ''; }
+}
+
+function openAddShortcutModal(docId) {
+let modal = document.getElementById('shortcut-modal');
+if (!modal) {
+modal = document.createElement('div');
+modal.id = 'shortcut-modal';
+modal.className = 'fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4';
+modal.innerHTML = `
+
+Nouveau Raccourci
+Annuler
+Ajouter
+
+    `;
+    document.body.appendChild(modal);
+    document.getElementById('sh-cancel').addEventListener('click', () => modal.remove());
+} else {
+    modal.classList.remove('hidden');
+    document.getElementById('sh-name').value = '';
+    document.getElementById('sh-url').value = '';
+    document.getElementById('sh-logo').value = '';
+}
+
+const saveBtn = document.getElementById('sh-save');
+const newSaveBtn = saveBtn.cloneNode(true);
+saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
+
+newSaveBtn.addEventListener('click', async () => {
+    const name = document.getElementById('sh-name').value.trim();
+    let url = document.getElementById('sh-url').value.trim();
+    let logo = document.getElementById('sh-logo').value.trim();
+
+    if (!name || !url) {
+        alert("Veuillez remplir au moins le nom et l'URL.");
+        return;
+    }
+
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = 'https://' + url;
+    }
+
+    modal.remove();
+
+    try {
+        const docRef = db.collection("dashboards").doc(docId);
+        const docSnap = await docRef.get();
+        let items = docSnap.exists && docSnap.data().items ? docSnap.data().items : [];
+
+        items.push({
+            id: Date.now().toString(),
+            name: name,
+            url: url,
+            logo: logo
+        });
+
+        await docRef.set({ items: items }, { merge: true });
+    } catch (e) {
+        console.error("Erreur lors de l'ajout :", e);
+    }
+});
+}
+
+async function openEditShortcutModal(docId, id) {
+const docRef = db.collection("dashboards").doc(docId);
+const docSnap = await docRef.get();
+if (!docSnap.exists || !docSnap.data().items) return;
+
+let items = docSnap.data().items;
+let item = items.find(s => s.id === id);
+if (!item) return;
+
+let modal = document.getElementById('shortcut-edit-modal');
+if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'shortcut-edit-modal';
+    modal.className = 'fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4';
+    modal.innerHTML = `
+Modifier le raccourci
+Annuler
+Enregistrer
+
+    `;
+    document.body.appendChild(modal);
+    document.getElementById('edit-sh-cancel').addEventListener('click', () => modal.remove());
+} else {
+    modal.classList.remove('hidden');
+}
+
+document.getElementById('edit-sh-name').value = item.name;
+document.getElementById('edit-sh-url').value = item.url;
+document.getElementById('edit-sh-logo').value = item.logo || '';
+
+const saveBtn = document.getElementById('edit-sh-save');
+const newSaveBtn = saveBtn.cloneNode(true);
+saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
+
+newSaveBtn.addEventListener('click', async () => {
+    const name = document.getElementById('edit-sh-name').value.trim();
+    let url = document.getElementById('edit-sh-url').value.trim();
+    let logo = document.getElementById('edit-sh-logo').value.trim();
+
+    if (!name || !url) {
+        alert("Le nom et l'URL ne peuvent pas être vides.");
+        return;
+    }
+
+    modal.remove();
+
+    try {
+        item.name = name;
+        item.url = url;
+        item.logo = logo;
+
+        await docRef.set({ items: items }, { merge: true });
+    } catch (e) {
+        console.error("Erreur lors de la modification :", e);
+    }
+});
+}
+
+async function deleteShortcut(docId, id) {
+if (!confirm("Voulez-vous supprimer ce raccourci ?")) return;
+try {
+const docRef = db.collection("dashboards").doc(docId);
+const docSnap = await docRef.get();
+if (docSnap.exists && docSnap.data().items) {
+let items = docSnap.data().items.filter(item => item.id !== id);
+await docRef.set({ items: items }, { merge: true });
+}
+} catch (e) {
+console.error("Erreur lors de la suppression :", e);
+}
+}
+
+// ==========================================
+// 3. SÉCURITÉ & LANCEMENT AUTOMATIQUE
+// ==========================================
+document.addEventListener("DOMContentLoaded", () => {
+if (sessionStorage.getItem('site_unlocked') !== 'true') {
+const lockScreen = document.createElement('div');
+lockScreen.id = 'site-lock-screen';
+lockScreen.className = 'fixed inset-0 z-50 bg-gray-950 flex items-center justify-center p-4';
+lockScreen.innerHTML = `
+
+🔒
+
+Accès Protégé
+Entrez le mot de passe pour accéder à votre tableau de bord.
+
+Déverrouiller
+
+    `;
+    document.body.appendChild(lockScreen);
+
+    const submitPassword = () => {
+        const pwd = document.getElementById('site-password-input').value;
+        if (pwd === "justin2026") {
+            sessionStorage.setItem('site_unlocked', 'true');
+            lockScreen.remove();
+            lancerToutesLesFonctions();
+        } else {
+            alert("Mot de passe incorrect !");
+            document.getElementById('site-password-input').value = '';
+        }
+    };
+
+    document.getElementById('site-login-btn').addEventListener('click', submitPassword);
+    document.getElementById('site-password-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') submitPassword();
+    });
+    return;
+}
+
+lancerToutesLesFonctions();
+});
+
+// Détecte et lance automatiquement toutes les fonctions commençant par "init"
+function lancerToutesLesFonctions() {
+for (let funcName in window) {
+if (funcName.startsWith('init') && typeof window[funcName] === 'function') {
+try {
+windowfuncName;
+} catch (e) {
+console.error(Erreur dans ${funcName}:, e);
+}
+}
+}
+}
+
+// --- AUTHENTIFICATION ANONYME SÉCURISÉE FIRESTORE ---
+firebase.auth().signInAnonymously()
+.then(() => {
+console.log("Connecté de manière sécurisée et transparente à Firebase !");
+})
+.catch((error) => {
+console.error("Erreur d'authentification Firebase :", error);
+});
