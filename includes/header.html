@@ -14,14 +14,14 @@
             <button onclick="toggleDarkMode()" class="p-2 rounded-xl bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700 transition" title="Basculer Mode Jour/Nuit">
                 <span id="theme-icon">☀️</span>
             </button>
-            <button id="admin-gear-btn" onclick="ouvrirAuthModal()" class="p-2 rounded-xl bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700 transition" title="Paramètres Admin">
+            <button id="admin-gear-btn" onclick="ouvrirMenuCompte()" class="p-2 rounded-xl bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700 transition" title="Compte">
                 <span>⚙️</span>
             </button>
         </div>
 
         <nav class="flex items-center bg-gray-100 dark:bg-gray-950 p-1 rounded-xl border border-gray-300 dark:border-gray-800 flex-wrap justify-center gap-1">
-            <a href="index.html" class="px-4 py-2 text-sm font-medium rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400">Raccourcis</a>
-            <a href="multimedia.html" class="px-4 py-2 text-sm font-medium rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400">Météo & Multimédia</a>
+            <a href="index.html" class="px-4 py-2 text-sm font-medium rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400">Accueil</a>
+            <a href="multimedia.html" class="px-4 py-2 text-sm font-medium rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400">Multimédia</a>
             <a href="justgo.html" class="px-4 py-2 text-sm font-medium rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 flex items-center gap-1.5"><span>🧭</span> Just go</a>
             <a href="homeassistant.html" class="px-4 py-2 text-sm font-medium rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 flex items-center gap-1.5"><span>🏠</span> Home Assistant</a>
         </nav>
@@ -90,20 +90,6 @@
         <div class="flex gap-2 mt-2">
             <button onclick="sauvegarderConfigBanderole()" class="bg-blue-600 hover:bg-blue-700 text-white p-2.5 rounded-lg text-sm flex-1 font-semibold">Appliquer & Enregistrer</button>
             <button onclick="fermerModalBandole()" class="bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 p-2.5 rounded-lg text-sm flex-1">Annuler</button>
-        </div>
-    </div>
-</div>
-
-<!-- Modal d'authentification Admin -->
-<div id="auth-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-6 rounded-2xl shadow-2xl max-w-sm w-full flex flex-col gap-4">
-        <h3 class="text-lg font-bold">🔒 Connexion Admin</h3>
-        <p class="text-xs text-gray-500 dark:text-gray-400">Connecte-toi avec ton compte administrateur pour déverrouiller les options.</p>
-        <input type="email" id="admin-email" placeholder="E-mail..." autocomplete="username" class="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white p-2.5 rounded-lg text-sm w-full outline-none">
-        <input type="password" id="admin-password" placeholder="Mot de passe..." autocomplete="current-password" class="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white p-2.5 rounded-lg text-sm w-full outline-none">
-        <div class="flex gap-2">
-            <button onclick="verifierAdmin()" class="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg text-sm flex-1">Se connecter</button>
-            <button onclick="fermerAuthModal()" class="bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 p-2 rounded-lg text-sm flex-1">Annuler</button>
         </div>
     </div>
 </div>

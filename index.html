@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Accueil - Mon Dashboard</title>
-    <!-- Tailwind CSS[cite: 1] -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio,line-clamp"></script>
     <script> tailwind.config = { darkMode: 'class' } </script>
     <link rel="stylesheet" href="css/style.css">
@@ -12,6 +12,8 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+    <!-- SortableJS (glisser-déposer des raccourcis) -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
     <!-- Les styles de banderole (marquee / rainbow / neon) sont désormais
          centralisés dans css/style.css : plus besoin de les dupliquer ici. -->
 </head>
@@ -22,8 +24,6 @@
 
     <!-- Contenu spécifique à cette page -->
     <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 flex flex-col gap-6">
-        <h2 class="text-xl font-bold">Bienvenue sur la page d'accueil</h2>
-        <p>Ici, vous mettez le contenu propre à cette page (vos grilles de raccourcis, etc.).</p>
 <!-- WIDGET MÉTÉO -->
 <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5 shadow-sm flex flex-col justify-between gap-4">
     
@@ -59,7 +59,7 @@
         <span class="text-xl">🔗</span>
         <h3 class="text-lg font-bold">Mes raccourcis</h3>
     </div>
-    <button onclick="openAddShortcutModal('justin_shortcuts')" class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors cursor-pointer shadow-sm flex items-center gap-1.5"><span>➕</span> Ajouter un raccourci</button>
+    <button onclick="openAddShortcutModal('justin_shortcuts')" class="admin-only px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors cursor-pointer shadow-sm flex items-center gap-1.5"><span>➕</span> Ajouter un raccourci</button>
 </div>
 <div id="shortcuts-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 min-h-[150px]"></div>
     </main>

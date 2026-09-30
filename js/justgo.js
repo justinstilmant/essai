@@ -6,7 +6,8 @@ let isMuted = false;
 let lastSpeedCheck = 0;
 let carMarker = null;
 
-document.addEventListener("DOMContentLoaded", () => {
+// Lancé une seule fois par main.js, une fois l'utilisateur connecté
+onAppReady(() => {
     setTimeout(() => {
         initMap();
     }, 100);
@@ -103,8 +104,6 @@ function updateCarPosition(lat, lon, heading) {
 }
 
 // --- 2. SYNTHÈSE VOCALE & AUDIO ---
-function falar(text) { parler(text); }
-
 function parler(text) {
     if (isMuted || !('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();

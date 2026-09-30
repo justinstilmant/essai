@@ -1,6 +1,16 @@
-document.addEventListener("DOMContentLoaded", () => {
+// Lancé une seule fois par main.js, une fois l'utilisateur connecté
+onAppReady(() => {
     chargerBoutonsPersonnalises();
+    afficherAlerteConfigHA();
 });
+
+// Affiche l'alerte tant que l'URL ou le jeton ne sont pas renseignés
+function afficherAlerteConfigHA() {
+    const warning = document.getElementById('ha-warning');
+    if (!warning) return;
+    const configured = !!(localStorage.getItem('ha_url') && localStorage.getItem('ha_token'));
+    warning.classList.toggle('hidden', configured);
+}
 
 // --- GESTION DE LA CONFIGURATION HA ---
 function openHaConfigModal() {
@@ -38,11 +48,16 @@ function openHaConfigModal() {
 }
 
 function sauvegarderConfigHA() {
-    const url = document.getElementById('input-ha-url').value.trim().replace(/\/$/, '');
+    let url = document.getElementById('input-ha-url').value.trim().replace(/\/$/, '');
     const token = document.getElementById('input-ha-token').value.trim();
+    if (url && !/^https?:\/\//i.test(url)) url = 'https://' + url;
+    if (/^http:\/\//i.test(url)) {
+        if (!confirm("Cette URL est en http (non chiffrée) : le jeton circulera en clair. Continuer quand même ?")) return;
+    }
     localStorage.setItem('ha_url', url);
     localStorage.setItem('ha_token', token);
     document.getElementById('ha-modal').remove();
+    afficherAlerteConfigHA();
     alert("Configuration enregistrée avec succès !");
 }
 
@@ -191,23 +206,25 @@ function chargerBoutonsPersonnalises() {
         const safeIcon = escapeHtml(b.icon);
         const safeName = escapeHtml(b.name);
         const safeEntity = escapeHtml(b.entity);
-        const safeService = escapeHtml(b.service);
 
         const card = document.createElement('div');
         card.className = 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-5 rounded-2xl shadow-sm flex flex-col justify-between gap-4 relative group';
         card.innerHTML = `
             <div class="flex items-center justify-between">
                 <span class="text-2xl">${safeIcon}</span>
-                <button onclick="supprimerBouton(${b.id})" class="text-gray-400 hover:text-red-500 text-xs font-bold cursor-pointer" title="Supprimer">×</button>
+                <button data-role="delete" class="text-gray-400 hover:text-red-500 text-xs font-bold cursor-pointer" title="Supprimer">×</button>
             </div>
             <div>
                 <h3 class="text-sm font-bold text-gray-900 dark:text-white">${safeName}</h3>
                 <p class="text-[10px] text-gray-500 font-mono">${safeEntity}</p>
             </div>
             <div>
-                <button onclick="executerAction('${safeEntity}', '${safeService}')" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-xl text-xs font-semibold transition-colors shadow-md cursor-pointer">Action</button>
+                <button data-role="action" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-xl text-xs font-semibold transition-colors shadow-md cursor-pointer">Action</button>
             </div>
         `;
+        // Les valeurs sont lues directement depuis l'objet : rien n'est réinjecté dans du JS
+        card.querySelector('[data-role="delete"]').addEventListener('click', () => supprimerBouton(b.id));
+        card.querySelector('[data-role="action"]').addEventListener('click', () => executerAction(b.entity, b.service));
         grid.appendChild(card);
     });
 }
