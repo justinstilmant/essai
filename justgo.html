@@ -14,7 +14,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
 </head>
 <body class="bg-gray-100 dark:bg-gray-950 text-gray-900 dark:text-white h-screen w-screen overflow-hidden relative transition-colors">
 
@@ -41,6 +41,8 @@
     <div class="absolute top-20 right-6 z-10 flex items-center gap-3">
         <!-- Bouton Configuration API -->
         <button onclick="openApiModal()" class="bg-white/90 dark:bg-gray-900/90 hover:bg-gray-200 dark:hover:bg-gray-800 p-3 rounded-full backdrop-blur border border-gray-300 dark:border-gray-700 shadow-lg text-lg transition-colors" title="Configurer les clés API">⚙️</button>
+        <button id="btn-recenter" onclick="recentrer()" class="hidden bg-blue-600 hover:bg-blue-500 text-white p-3 rounded-full shadow-lg text-lg" title="Recentrer">📍</button>
+        <button onclick="basculerTrafic()" class="bg-white/90 dark:bg-gray-900/90 hover:bg-gray-200 dark:hover:bg-gray-800 p-3 rounded-full backdrop-blur border border-gray-300 dark:border-gray-700 shadow-lg text-lg transition-colors" title="Afficher/masquer la circulation">🚦</button>
         <button id="btn-mute" class="bg-white/90 dark:bg-gray-900/90 hover:bg-gray-200 dark:hover:bg-gray-800 p-3 rounded-full backdrop-blur border border-gray-300 dark:border-gray-700 shadow-lg text-lg transition-colors">🔊</button>
         <button id="btn-stop" class="bg-red-600 hover:bg-red-500 px-4 py-2 rounded-xl backdrop-blur font-bold text-sm text-white shadow-lg transition-colors">Arrêter</button>
     </div>
@@ -53,7 +55,7 @@
             <span class="text-[10px] text-gray-500 uppercase tracking-wider">km/h</span>
             
             <!-- Panneau de limitation de vitesse (Style Tesla) -->
-            <div id="speed-limit-sign" class="absolute -top-3 -right-3 hidden items-center justify-center w-10 h-10 bg-white border-3 border-red-600 rounded-full shadow-lg font-bold text-gray-900 text-xs">
+            <div id="speed-limit-sign" style="border:5px solid #dc2626" class="absolute -top-4 -right-4 hidden items-center justify-center w-14 h-14 bg-white rounded-full shadow-lg font-black text-gray-900 text-lg">
                 <span id="speed-limit-value">50</span>
             </div>
         </div>
@@ -74,26 +76,45 @@
         </div>
     </div>
 
+    <!-- Bandeau de guidage (manœuvre suivante) -->
+    <div id="nav-banner" class="hidden absolute top-36 md:top-20 left-1/2 -translate-x-1/2 z-20 bg-gray-900/95 text-white rounded-2xl shadow-2xl px-6 py-3 flex items-center gap-5 max-w-[92vw]">
+        <span id="nav-arrow" class="text-5xl leading-none">⬆️</span>
+        <div>
+            <div id="nav-dist" class="text-3xl font-black">--</div>
+            <div id="nav-text" class="text-sm text-gray-300">--</div>
+        </div>
+    </div>
+
+    <!-- Temps restant / distance / arrivée -->
+    <div id="nav-eta" class="hidden absolute bottom-6 left-1/2 -translate-x-1/2 z-10 bg-gray-900/95 text-white rounded-2xl shadow-2xl px-5 py-2 flex items-center gap-4 text-sm font-semibold">
+        <span id="eta-time">--</span><span class="text-gray-500">·</span>
+        <span id="eta-dist">--</span><span class="text-gray-500">·</span>
+        <span>🏁 <span id="eta-arrival">--:--</span></span>
+    </div>
+
     <!-- 5. ENCART D'INFORMATIONS ROUTE (Bas à droite) -->
     <div class="absolute bottom-6 right-6 z-10 bg-white/90 dark:bg-gray-900/90 backdrop-blur border border-gray-300 dark:border-gray-700 rounded-2xl p-4 shadow-2xl w-80 flex flex-col gap-3 text-xs transition-colors">
         <div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-800 pb-2">
             <span class="font-bold flex items-center gap-1.5"><span>📊</span> Infos Navigation</span>
-            <span id="gps-weather-badge" class="text-sm">⛅ --°C</span>
         </div>
         <div class="flex flex-col gap-1.5 text-gray-600 dark:text-gray-300">
             <div class="flex justify-between">
-                <span>Itinéraire (OSRM) :</span>
+                <span>Itinéraire :</span>
                 <span id="info-route" class="font-semibold text-gray-900 dark:text-white">En attente de destination</span>
             </div>
             <div class="flex justify-between">
-                <span>Trafic (TomTom) :</span>
-                <span id="info-traffic" class="font-semibold text-emerald-500">Fluide (Clé requise)</span>
+                <span>Trafic :</span>
+                <span id="info-traffic" class="font-semibold">—</span>
+            </div>
+            <div class="flex justify-between">
+                <span>Incidents :</span>
+                <span id="info-incidents" class="font-semibold text-gray-900 dark:text-white">—</span>
             </div>
         </div>
     </div>
 
     <!-- Scripts externes -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
     <script src="js/main.js"></script>
     <script src="js/justgo.js"></script>
 </body>
