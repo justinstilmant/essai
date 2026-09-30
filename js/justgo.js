@@ -12,10 +12,13 @@ let currentCoords = null;                       // compatibilité (favoris)
 let lastReroute = 0, lastSpeedCheck = 0;
 let incidentMarkers = [], incidentsData = [];
 const spokenIncidents = new Set();
+let preview = null;                             // itinéraires proposés avant départ
+let scMarkers = [], scData = [], lastSC = 0;   // Superchargeurs
 
 // Lancé une seule fois par main.js, une fois l'utilisateur connecté
 onAppReady(async () => {
     setupAudioToggle();
+    setupChoix();
     mettreAJourAffichageFavoris();
     await chargerClesApiFirestore();            // les clés doivent être là avant la carte
     initMap();
@@ -73,6 +76,7 @@ function initMap() {
             { enableHighAccuracy: true, maximumAge: 500, timeout: 8000 });
     }
     setInterval(rafraichirIncidents, 60000);
+    setInterval(() => chargerSuperchargeurs(), 120000);
 }
 
 function ajouterCouches() {
@@ -83,6 +87,9 @@ function ajouterCouches() {
         map.addLayer({ id: 'flow', type: 'raster', source: 'flow', paint: { 'raster-opacity': 0.85 },
             layout: { visibility: localStorage.getItem('gps_traffic') === 'off' ? 'none' : 'visible' } });
     }
+    map.addSource('alt', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });   // itinéraires alternatifs (gris)
+    map.addLayer({ id: 'alt-line', type: 'line', source: 'alt', layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': '#9ca3af', 'line-width': 7, 'line-opacity': 0.9 } });
     map.addSource('route', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
     map.addLayer({ id: 'route-casing', type: 'line', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' },
         paint: { 'line-color': '#1e3a8a', 'line-width': 12 } });
@@ -117,7 +124,7 @@ function onPosition(p) {
     carMarker.setLngLat([pos.lon, pos.lat]).setRotation(heading);
     if (nav) suivreNavigation(); else verifierSignalisationRoute();
     if (follow) suivreCamera();
-    if (premiere) rafraichirIncidents();
+    if (premiere) { rafraichirIncidents(); chargerSuperchargeurs(true); }
 }
 
 /* ---------- 2. VOIX ---------- */
@@ -166,10 +173,12 @@ async function naviguerVers(nom, lat, lon, recalcul = false) {
     try {
         const url = `https://api.mapbox.com/directions/v5/mapbox/driving-traffic/${pos.lon},${pos.lat};${lon},${lat}` +
             `?geometries=geojson&overview=full&steps=true&banner_instructions=true&voice_instructions=true&voice_units=metric` +
-            `&language=fr&annotations=maxspeed,congestion&access_token=${key}`;
+            `&language=fr&annotations=maxspeed,congestion&alternatives=${recalcul ? 'false' : 'true'}&access_token=${key}`;
         const data = await (await fetch(url)).json();
         if (!data.routes || !data.routes.length) throw new Error(data.message || 'Aucun itinéraire');
-        demarrerNavigation(data.routes[0], { name: nom, lat, lon }, recalcul);
+        const dest = { name: nom, lat, lon };
+        if (recalcul || data.routes.length === 1) demarrerNavigation(data.routes[0], dest, recalcul);
+        else proposerItineraires(data.routes, dest);
     } catch (e) {
         console.error('Erreur itinéraire', e);
         $('info-route').innerText = 'Itinéraire impossible';
@@ -178,6 +187,7 @@ async function naviguerVers(nom, lat, lon, recalcul = false) {
 }
 
 function demarrerNavigation(route, dest, recalcul) {
+    cacherChoix();
     const leg = route.legs[0], coords = route.geometry.coordinates, ann = leg.annotation || {};
     const cum = [0];
     for (let i = 1; i < coords.length; i++) cum.push(cum[i - 1] + hav(coords[i - 1], coords[i]));
@@ -210,6 +220,7 @@ function demarrerNavigation(route, dest, recalcul) {
         setTimeout(() => { if (nav) { follow = true; majBoutonRecentrer(); suivreCamera(); } }, 3000);
     }
     rafraichirIncidents();
+    chargerSuperchargeurs(true);
 }
 
 function dessinerRoute(coords, cong) {
@@ -227,6 +238,7 @@ function dessinerRoute(coords, cong) {
 
 function arreterNavigation() {
     nav = null;
+    cacherChoix();
     const src = map && map.getSource('route');
     if (src) src.setData({ type: 'FeatureCollection', features: [] });
     $('nav-banner').classList.add('hidden');
@@ -235,6 +247,7 @@ function arreterNavigation() {
     $('info-traffic').innerText = '—';
     afficherLimite(null);
     majInfoIncidents();
+    majInfoSC();
     follow = true; majBoutonRecentrer(); suivreCamera();
 }
 
@@ -291,6 +304,7 @@ function suivreNavigation() {
         if (dStep <= v.distanceAlongGeometry && !n.spoken.has(key)) { n.spoken.add(key); say = v.announcement; }
     });
     if (say) parler(say);
+    majInfoSC();
 
     // Alertes d'incidents devant nous (une seule fois chacun, à moins de 2 km)
     n.incidents.forEach(inc => {
@@ -322,6 +336,127 @@ async function verifierSignalisationRoute() {
         const raw = (data.elements || []).map(e => e.tags.maxspeed).find(x => /^\d+/.test(x));
         afficherLimite(raw ? parseInt(raw, 10) : null);
     } catch (e) { console.warn('Erreur signalétique', e); }
+}
+
+/* ---------- 6 bis. CHOIX DE L'ITINÉRAIRE (alternatives) ---------- */
+function proposerItineraires(routes, dest) {
+    preview = { routes, dest, sel: 0 };
+    follow = false; majBoutonRecentrer();
+    $('info-route').innerText = `${routes.length} itinéraires vers ${dest.name}`;
+    parler(`${routes.length} itinéraires disponibles. Choisis, puis appuie sur démarrer.`);
+    const all = routes.flatMap(r => r.geometry.coordinates);
+    map.fitBounds(all.reduce((bb, c) => bb.extend(c), new maplibregl.LngLatBounds(all[0], all[0])), { padding: 90, duration: 800 });
+    $('route-choice').classList.remove('hidden');
+    majChoix();
+}
+
+function majChoix() {                           // trace l'aperçu (choisi en couleur, autres en gris) + cartes
+    if (!preview) return;
+    const { routes, sel } = preview, r = routes[sel];
+    dessinerRoute(r.geometry.coordinates, (r.legs[0].annotation || {}).congestion || []);
+    const alt = map.getSource('alt');
+    if (alt) alt.setData({ type: 'FeatureCollection', features: routes.filter((_, i) => i !== sel).map(x => ({ type: 'Feature', properties: {}, geometry: x.geometry })) });
+    $('route-cards').innerHTML = routes.map((x, i) => {
+        const diff = Math.round((x.duration - routes[0].duration) / 60);
+        const tag = i === 0 ? 'Le plus rapide' : (diff > 0 ? `+${diff} min` : 'Alternative');
+        const ret = x.duration_typical ? Math.round((x.duration - x.duration_typical) / 60) : 0;
+        return `<button data-idx="${i}" class="text-left rounded-xl px-3 py-2 border-2 ${i === sel ? 'border-blue-500 bg-blue-600/20' : 'border-gray-700 bg-gray-800'}">` +
+            `<div class="flex justify-between items-baseline"><span class="text-lg font-black">${formatDuree(x.duration)}</span><span class="text-xs text-gray-400">${formatDist(x.distance)}</span></div>` +
+            `<div class="text-xs ${i === 0 ? 'text-emerald-400' : 'text-gray-400'}">${tag}${ret > 3 ? ` · <span class="text-red-400">${ret} min de bouchons</span>` : ''}</div></button>`;
+    }).join('');
+}
+
+function cacherChoix() {
+    preview = null;
+    const box = $('route-choice'); if (box) box.classList.add('hidden');
+    const alt = map && map.getSource('alt');
+    if (alt) alt.setData({ type: 'FeatureCollection', features: [] });
+}
+
+function setupChoix() {
+    $('route-cards').addEventListener('click', (e) => {
+        const b = e.target.closest('[data-idx]');
+        if (b && preview) { preview.sel = +b.dataset.idx; majChoix(); }
+    });
+    $('route-go').addEventListener('click', () => {
+        if (!preview) return;
+        const { routes, sel, dest } = preview;
+        demarrerNavigation(routes[sel], dest, false);
+    });
+}
+
+/* ---------- 6 ter. SUPERCHARGEURS (OpenStreetMap / Overpass, sans clé) ---------- */
+const scActif = () => localStorage.getItem('gps_sc') !== 'off';
+
+function basculerSuperchargeurs() {
+    const on = scActif();
+    localStorage.setItem('gps_sc', on ? 'off' : 'on');
+    if (on) { scMarkers.forEach(m => m.remove()); scMarkers = []; scData = []; if (nav) nav.sc = []; majInfoSC(); }
+    else chargerSuperchargeurs(true);
+}
+
+async function chargerSuperchargeurs(force) {
+    if (!scActif() || !pos || !map) return;
+    const now = Date.now();
+    if (!force && now - lastSC < 120000) return;
+    lastSC = now;
+    let zone;
+    if (nav) {                                  // le long de l'itinéraire (3 km de part et d'autre)
+        const c = nav.coords, pas = Math.max(1, Math.floor(c.length / 60)), pts = [];
+        for (let i = 0; i < c.length; i += pas) pts.push(`${c[i][1].toFixed(4)},${c[i][0].toFixed(4)}`);
+        pts.push(`${c[c.length - 1][1].toFixed(4)},${c[c.length - 1][0].toFixed(4)}`);
+        zone = `around:3000,${pts.join(',')}`;
+    } else zone = `around:15000,${pos.lat},${pos.lon}`;
+    const f = `["amenity"="charging_station"]`;
+    const q = `[out:json][timeout:25];(nwr${f}["brand"~"Tesla",i](${zone});nwr${f}["operator"~"Tesla",i](${zone});nwr${f}["network"~"Tesla",i](${zone}););out center tags;`;
+    try {
+        const r = await fetch('https://overpass-api.de/api/interpreter', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'data=' + encodeURIComponent(q) });
+        const d = await r.json();
+        afficherSC(d.elements || []);
+    } catch (e) { console.warn('Erreur Superchargeurs', e); lastSC = 0; }
+}
+
+function afficherSC(elements) {
+    scMarkers.forEach(m => m.remove());
+    scMarkers = []; scData = [];
+    const vus = new Set();
+    elements.forEach(el => {
+        const lat = el.lat ?? (el.center && el.center.lat), lon = el.lon ?? (el.center && el.center.lon), t = el.tags || {};
+        if (lat == null || vus.has(el.type + el.id)) return;
+        vus.add(el.type + el.id);
+        const name = t.name || 'Supercharger';
+        const detail = [t.capacity ? `${t.capacity} bornes` : '', t['socket:tesla_supercharger:output'] || ''].filter(Boolean).join(' · ') || 'Supercharger Tesla';
+
+        const pin = document.createElement('div');
+        pin.textContent = '⚡';
+        pin.style.cssText = 'font-size:16px;background:#dc2626;color:#fff;border:2px solid #fff;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer';
+        const box = document.createElement('div');
+        const t1 = document.createElement('div'); t1.style.fontWeight = '700'; t1.textContent = name;
+        const t2 = document.createElement('div'); t2.textContent = detail;
+        const btn = document.createElement('button');
+        btn.textContent = '🚗 Y aller';
+        btn.style.cssText = 'margin-top:6px;background:#2563eb;color:#fff;border-radius:8px;padding:6px 12px;font-weight:600';
+        btn.addEventListener('click', () => naviguerVers(name, lat, lon));
+        box.append(t1, t2, btn);
+        scMarkers.push(new maplibregl.Marker({ element: pin }).setLngLat([lon, lat])
+            .setPopup(new maplibregl.Popup({ offset: 16 }).setDOMContent(box)).addTo(map));
+        scData.push({ name, lat, lon });
+    });
+    if (nav) {                                  // position de chaque borne le long de la route
+        nav.sc = scData.map(s => { const r = chercherSurRoute([s.lon, s.lat], 0, nav.coords.length - 2); return { ...s, along: alongDe(r) }; })
+            .sort((a, b) => a.along - b.along);
+    }
+    majInfoSC();
+}
+
+function majInfoSC() {
+    const el = $('info-charge');
+    if (!el) return;
+    if (!scActif()) { el.innerText = 'Masqués'; return; }
+    if (nav && nav.sc) {
+        const nx = nav.sc.find(x => x.along > nav.along);
+        el.innerText = nx ? `${nx.name} · ${formatDist(nx.along - nav.along)}` : 'Aucun sur la route';
+    } else el.innerText = `${scData.length} à proximité`;
 }
 
 /* ---------- 7. INCIDENTS (TomTom) ---------- */
