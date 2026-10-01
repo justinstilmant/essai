@@ -767,6 +767,6 @@ async function demarrerApp() {
     runSafe(initWeatherWidget);
     runSafe(initShortcutsGrid);
 
-    // Fonctions propres à une page (justgo.js, homeassistant.js) via onAppReady()
+    // Fonctions propres à une page (justgo.js, home-bg.js) via onAppReady()
     appReadyCallbacks.splice(0).forEach(runSafe);
 }

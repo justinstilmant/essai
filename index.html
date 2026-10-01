@@ -17,13 +17,42 @@
     <!-- Les styles de banderole (marquee / rainbow / neon) sont désormais
          centralisés dans css/style.css : plus besoin de les dupliquer ici. -->
 </head>
-<body class="bg-gray-100 dark:bg-gray-950 text-gray-900 dark:text-gray-100 min-h-screen flex flex-col font-sans transition-colors duration-200">
+<body class="bg-gray-100 dark:bg-gray-950 text-gray-900 dark:text-gray-100 h-screen overflow-hidden flex flex-col font-sans transition-colors duration-200">
 
     <!-- Emplacement réservé pour le Header commun -->
     <div id="header-placeholder"></div>
 
     <!-- Contenu spécifique à cette page -->
-    <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 flex flex-col gap-6">
+    <main class="flex-1 relative min-h-0">
+        <!-- Fond : le dashboard Home Assistant en plein écran -->
+        <iframe id="ha-frame" title="Home Assistant" class="absolute inset-0 w-full h-full border-0 bg-gray-900" allow="fullscreen"></iframe>
+
+        <!-- Saisie de l'adresse du dashboard (première utilisation) -->
+        <div id="ha-setup" class="hidden absolute inset-0 z-10 bg-gray-950/95 flex items-center justify-center p-4">
+            <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 max-w-lg w-full shadow-2xl flex flex-col gap-3 text-sm text-gray-300">
+                <h2 class="text-lg font-bold text-white">🏠 Adresse de ton dashboard Home Assistant</h2>
+                <input id="ha-url-input" type="text" placeholder="https://ton-ha.ts.net/lovelace/0"
+                    class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white outline-none focus:border-blue-500">
+                <p id="ha-setup-error" class="hidden text-xs text-red-400"></p>
+                <p class="text-xs text-gray-400">Si l'écran reste vide, Home Assistant interdit l'affichage dans un autre site. Dans <code>configuration.yaml</code> :</p>
+                <pre class="bg-gray-800 rounded-lg p-2 text-xs text-emerald-300">http:\n  use_x_frame_options: false</pre>
+                <div class="flex gap-2">
+                    <button id="ha-setup-cancel" class="hidden flex-1 bg-gray-800 hover:bg-gray-700 py-2 rounded-lg font-semibold">Annuler</button>
+                    <button id="ha-setup-save" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-lg font-semibold">Enregistrer</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Boutons flottants -->
+        <div class="absolute bottom-4 left-4 z-20 flex items-center gap-2">
+            <button id="btn-widgets" class="bg-gray-900/90 hover:bg-gray-800 text-white px-4 py-3 rounded-full shadow-lg text-sm font-semibold backdrop-blur border border-gray-700">🧩 Widgets</button>
+            <button id="btn-ha-reload" class="bg-gray-900/90 hover:bg-gray-800 text-white w-12 h-12 rounded-full shadow-lg backdrop-blur border border-gray-700" title="Recharger">🔄</button>
+            <a id="btn-ha-open" target="_blank" rel="noopener noreferrer" class="bg-gray-900/90 hover:bg-gray-800 text-white w-12 h-12 rounded-full shadow-lg backdrop-blur border border-gray-700 flex items-center justify-center" title="Ouvrir dans un onglet">↗</a>
+            <button id="btn-ha-config" class="bg-gray-900/90 hover:bg-gray-800 text-white w-12 h-12 rounded-full shadow-lg backdrop-blur border border-gray-700" title="Changer l'adresse">⚙️</button>
+        </div>
+
+        <!-- Panneau Widgets (météo + raccourcis) -->
+        <aside id="widgets-panel" class="hidden absolute bottom-20 left-4 z-20 w-[28rem] max-w-[92vw] max-h-[75%] overflow-y-auto bg-gray-100/95 dark:bg-gray-950/95 backdrop-blur rounded-2xl shadow-2xl border border-gray-300 dark:border-gray-800 p-4 flex flex-col gap-4">
 <!-- WIDGET MÉTÉO -->
 <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5 shadow-sm flex flex-col justify-between gap-4">
     
@@ -61,7 +90,8 @@
     </div>
     <button onclick="openAddShortcutModal('justin_shortcuts')" class="admin-only px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors cursor-pointer shadow-sm flex items-center gap-1.5"><span>➕</span> Ajouter un raccourci</button>
 </div>
-<div id="shortcuts-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 min-h-[150px]"></div>
+<div id="shortcuts-grid" class="grid grid-cols-3 gap-3 min-h-[150px]"></div>
+        </aside>
     </main>
 
     <!-- Emplacement réservé pour le Footer commun -->
@@ -69,5 +99,6 @@
 
     <!-- Script principal partagé -->
     <script src="js/main.js"></script>
+    <script src="js/home-bg.js"></script>
 </body>
 </html>
