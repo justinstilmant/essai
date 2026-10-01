@@ -538,6 +538,7 @@ async function chargerClesApiFirestore() {
             if (keys.tomtom) localStorage.setItem('api_key_tomtom', keys.tomtom);
             if (keys.openweather) localStorage.setItem('api_key_openweather', keys.openweather);
             if (keys.mapbox) localStorage.setItem('api_key_mapbox', keys.mapbox);
+            if (keys.openwebninja) localStorage.setItem('api_key_openwebninja', keys.openwebninja);
         }
     } catch (e) {
         console.warn("Chargement clés Firestore ignoré (mode local)", e);
@@ -569,6 +570,10 @@ function openApiModal() {
                         <label class="font-semibold text-gray-700 dark:text-gray-300">Mapbox (Itinéraire &amp; guidage)</label>
                         <input type="password" id="key-mapbox" class="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white outline-none">
                     </div>
+                    <div class="flex flex-col gap-1">
+                        <label class="font-semibold text-gray-700 dark:text-gray-300">OpenWeb Ninja (Alertes communautaires)</label>
+                        <input type="password" id="key-openwebninja" class="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white outline-none">
+                    </div>
                 </div>
                 <div class="flex gap-2 mt-2">
                     <button onclick="document.getElementById('api-modal').remove()" class="flex-1 bg-gray-200 dark:bg-gray-800 py-2 rounded-lg text-xs font-semibold">Annuler</button>
@@ -583,17 +588,20 @@ function openApiModal() {
     document.getElementById('key-tomtom').value = getApiKey('tomtom');
     document.getElementById('key-openweather').value = getApiKey('openweather');
     document.getElementById('key-mapbox').value = getApiKey('mapbox');
+    document.getElementById('key-openwebninja').value = getApiKey('openwebninja');
 }
 
 async function saveApiKeys() {
     const tomtom = document.getElementById('key-tomtom').value.trim();
     const openweather = document.getElementById('key-openweather').value.trim();
     const mapbox = document.getElementById('key-mapbox').value.trim();
+    const openwebninja = document.getElementById('key-openwebninja').value.trim();
 
     // 1. Sauvegarde locale
     localStorage.setItem('api_key_tomtom', tomtom);
     localStorage.setItem('api_key_openweather', openweather);
     localStorage.setItem('api_key_mapbox', mapbox);
+    localStorage.setItem('api_key_openwebninja', openwebninja);
 
     // 2. Sauvegarde Cloud sur Firestore
     try {
@@ -601,7 +609,8 @@ async function saveApiKeys() {
             await db.collection("dashboards").doc("justin_api_keys").set({
                 tomtom: tomtom,
                 openweather: openweather,
-                mapbox: mapbox
+                mapbox: mapbox,
+                openwebninja: openwebninja
             }, { merge: true });
             console.log("Clés API sauvegardées dans Firestore !");
         }
