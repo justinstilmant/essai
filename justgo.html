@@ -15,11 +15,15 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
+    <style>
+        .rbtn{width:2.5rem;height:2.5rem;border-radius:9999px;display:flex;align-items:center;justify-content:center;font-size:1.05rem;background:rgba(17,24,39,.92);color:#fff;border:1px solid #374151;box-shadow:0 4px 10px rgba(0,0,0,.4);flex-shrink:0;cursor:pointer}
+        .rbtn:hover{background:#1f2937}
+    </style>
 </head>
 <body class="bg-gray-100 dark:bg-gray-950 text-gray-900 dark:text-white h-screen w-screen overflow-hidden relative transition-colors">
 
     <!-- 1. EN-TÊTE DU SITE (Flottant au-dessus de la carte) -->
-    <header class="absolute top-0 left-0 right-0 z-20 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 px-6 py-3 flex items-center justify-between shadow-md">
+    <header class="absolute top-0 left-0 right-0 z-20 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 px-6 py-3 flex items-center gap-4 shadow-md">
         <div class="flex items-center gap-3">
             <span class="text-xl">🚗</span>
             <h1 class="font-bold text-sm tracking-wide">Just Go - Tesla Navigation</h1>
@@ -33,19 +37,26 @@
     <div id="map" class="absolute inset-0 z-0"></div>
 
     <!-- 3. BARRE DE RECHERCHE & BOUTONS HAUT -->
-    <div class="absolute top-20 left-6 z-10 flex items-center gap-2">
-        <input type="text" id="search-input" placeholder="Où allons-nous ?" class="bg-white/90 dark:bg-gray-900/90 backdrop-blur border border-gray-300 dark:border-gray-700 rounded-xl px-4 py-2 text-xs shadow-lg outline-none w-64 text-gray-900 dark:text-white focus:border-blue-500">
-        <button onclick="rechercherDestination()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-xl text-xs font-semibold shadow-lg transition-colors">Go</button>
+    <div id="search-wrap" class="absolute top-20 left-6 z-30">
+        <div class="flex items-center gap-2">
+            <input type="text" id="search-input" autocomplete="off" placeholder="Où allons-nous ?" class="bg-white/90 dark:bg-gray-900/90 backdrop-blur border border-gray-300 dark:border-gray-700 rounded-xl px-4 py-3 text-sm shadow-lg outline-none w-72 text-gray-900 dark:text-white focus:border-blue-500">
+            <button onclick="rechercherDestination()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-3 rounded-xl text-sm font-semibold shadow-lg transition-colors">Go</button>
+        </div>
+        <div id="search-suggest" class="hidden mt-1 w-[min(26rem,92vw)] bg-gray-900/95 text-white rounded-xl shadow-2xl overflow-hidden"></div>
     </div>
 
-    <div class="absolute top-20 right-6 z-10 flex items-center gap-3">
-        <!-- Bouton Configuration API -->
-        <button onclick="openApiModal()" class="bg-white/90 dark:bg-gray-900/90 hover:bg-gray-200 dark:hover:bg-gray-800 p-3 rounded-full backdrop-blur border border-gray-300 dark:border-gray-700 shadow-lg text-lg transition-colors" title="Configurer les clés API">⚙️</button>
-        <button id="btn-recenter" onclick="recentrer()" class="hidden bg-blue-600 hover:bg-blue-500 text-white p-3 rounded-full shadow-lg text-lg" title="Recentrer">📍</button>
-        <button onclick="basculerTrafic()" class="bg-white/90 dark:bg-gray-900/90 hover:bg-gray-200 dark:hover:bg-gray-800 p-3 rounded-full backdrop-blur border border-gray-300 dark:border-gray-700 shadow-lg text-lg transition-colors" title="Afficher/masquer la circulation">🚦</button>
-        <button onclick="basculerSuperchargeurs()" class="bg-white/90 dark:bg-gray-900/90 hover:bg-gray-200 dark:hover:bg-gray-800 p-3 rounded-full backdrop-blur border border-gray-300 dark:border-gray-700 shadow-lg text-lg transition-colors" title="Afficher/masquer les Superchargeurs">⚡</button>
-        <button id="btn-mute" class="bg-white/90 dark:bg-gray-900/90 hover:bg-gray-200 dark:hover:bg-gray-800 p-3 rounded-full backdrop-blur border border-gray-300 dark:border-gray-700 shadow-lg text-lg transition-colors">🔊</button>
-        <button id="btn-stop" class="bg-red-600 hover:bg-red-500 px-4 py-2 rounded-xl backdrop-blur font-bold text-sm text-white shadow-lg transition-colors">Arrêter</button>
+    <!-- Barre de boutons sur le bord droit (repliable avec ☰) -->
+    <div id="rail" class="absolute right-2 top-24 z-10 flex flex-col items-end gap-2" style="max-height:calc(100vh - 17rem)">
+        <button id="rail-toggle" class="rbtn" title="Afficher / masquer les boutons">☰</button>
+        <div id="rail-items" class="flex flex-col gap-2 overflow-y-auto pr-0.5">
+            <button onclick="openApiModal()" class="rbtn" title="Configurer les clés API">⚙️</button>
+            <button id="btn-recenter" onclick="recentrer()" class="rbtn hidden" style="background:#2563eb" title="Recentrer">📍</button>
+            <button onclick="basculerTrafic()" class="rbtn" title="Circulation">🚦</button>
+            <button onclick="basculerSuperchargeurs()" class="rbtn" title="Superchargeurs">⚡</button>
+            <button id="btn-waze" onclick="basculerWaze()" class="rbtn" title="Alertes Waze (police, accidents, dangers)">🚓</button>
+            <button id="btn-mute" class="rbtn" title="Voix">🔊</button>
+            <button id="btn-stop" class="rbtn" style="background:#dc2626" title="Arrêter la navigation">⏹</button>
+        </div>
     </div>
 
     <!-- 4. VITESSE, PANNEAU DE SIGNALISATION & FAVORIS (Bas à gauche) -->
@@ -101,7 +112,7 @@
     </div>
 
     <!-- 5. ENCART D'INFORMATIONS ROUTE (Bas à droite) -->
-    <div class="absolute bottom-6 right-6 z-10 bg-white/90 dark:bg-gray-900/90 backdrop-blur border border-gray-300 dark:border-gray-700 rounded-2xl p-4 shadow-2xl w-80 flex flex-col gap-3 text-xs transition-colors">
+    <div class="absolute bottom-4 right-2 z-10 bg-white/90 dark:bg-gray-900/90 backdrop-blur border border-gray-300 dark:border-gray-700 rounded-2xl p-3 shadow-2xl w-72 flex flex-col gap-2 text-xs transition-colors">
         <div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-800 pb-2">
             <span class="font-bold flex items-center gap-1.5"><span>📊</span> Infos Navigation</span>
         </div>
@@ -121,6 +132,14 @@
             <div class="flex justify-between gap-2">
                 <span>⚡ Supercharger :</span>
                 <span id="info-charge" class="font-semibold text-gray-900 dark:text-white text-right truncate">—</span>
+            </div>
+            <div class="flex justify-between gap-2">
+                <span>🚓 Waze :</span>
+                <span id="info-waze" class="font-semibold text-gray-500 text-right truncate">Désactivé</span>
+            </div>
+            <div class="flex justify-between gap-2">
+                <span>🔊 Voix :</span>
+                <span id="info-voix" class="font-semibold text-right truncate">—</span>
             </div>
         </div>
     </div>

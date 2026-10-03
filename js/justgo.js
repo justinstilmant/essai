@@ -19,6 +19,7 @@ let scMarkers = [], scData = [], lastSC = 0;   // Superchargeurs
 onAppReady(async () => {
     setupAudioToggle();
     setupChoix();
+    setupSuggestions();
     mettreAJourAffichageFavoris();
     await chargerClesApiFirestore();            // les clés doivent être là avant la carte
     initMap();
@@ -77,6 +78,8 @@ function initMap() {
     }
     setInterval(rafraichirIncidents, 60000);
     setInterval(() => chargerSuperchargeurs(), 120000);
+    majBoutonWaze();
+    if (wazeActif()) demarrerWaze();
 }
 
 function ajouterCouches() {
@@ -124,23 +127,87 @@ function onPosition(p) {
     carMarker.setLngLat([pos.lon, pos.lat]).setRotation(heading);
     if (nav) suivreNavigation(); else verifierSignalisationRoute();
     if (follow) suivreCamera();
-    if (premiere) { rafraichirIncidents(); chargerSuperchargeurs(true); }
+    if (premiere) { rafraichirIncidents(); chargerSuperchargeurs(true); chargerWaze(true); }
 }
 
 /* ---------- 2. VOIX ---------- */
+let voixFr = null, audioCtx = null;
+const voixOk = 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined';
+
+function choisirVoix() {
+    if (!voixOk) return;
+    try {
+        const v = speechSynthesis.getVoices() || [];
+        voixFr = v.find(x => /^fr[-_]FR/i.test(x.lang)) || v.find(x => /^fr/i.test(x.lang)) || null;
+    } catch (e) { voixFr = null; }              // un navigateur sans getVoices ne doit pas bloquer la carte
+    majInfoVoix();
+}
+
+function majInfoVoix() {
+    const el = $('info-voix');
+    if (!el) return;
+    let t = 'OK' + (voixFr ? ' · ' + voixFr.lang : ' (voix par défaut)'), c = 'text-emerald-500';
+    if (!voixOk) { t = 'Non supportée (bips)'; c = 'text-red-500'; }
+    else if (isMuted) { t = 'Coupée'; c = 'text-gray-500'; }
+    el.innerText = t;
+    el.className = 'font-semibold text-right truncate ' + c;
+}
+
+function bip() {                                // repli sonore quand la voix n'est pas disponible
+    try {
+        audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+        audioCtx.resume();
+        const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+        o.frequency.value = 880; g.gain.value = 0.25;
+        o.connect(g); g.connect(audioCtx.destination);
+        o.start(); o.stop(audioCtx.currentTime + 0.2);
+    } catch (e) { /* pas d'audio du tout */ }
+}
+
+// Les navigateurs interdisent de parler avant un vrai geste de l'utilisateur :
+// au premier toucher, on "réveille" la synthèse vocale et l'audio.
+function deverrouillerAudio() {
+    try {
+        if (voixOk) { const u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); }
+        audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+        audioCtx.resume();
+    } catch (e) { /* ignoré */ }
+}
+
 function parler(text) {
-    if (isMuted || !('speechSynthesis' in window)) return;
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'fr-FR'; u.rate = 1.0;
-    window.speechSynthesis.speak(u);
+    if (isMuted) return;
+    if (!voixOk) { bip(); return; }
+    try {
+        speechSynthesis.cancel();
+        if (speechSynthesis.resume) speechSynthesis.resume();
+        setTimeout(() => {                      // petit délai : cancel() suivi de speak() est parfois avalé
+            const u = new SpeechSynthesisUtterance(text);
+            u.lang = (voixFr && voixFr.lang) || 'fr-FR';
+            if (voixFr) u.voice = voixFr;
+            u.rate = 1; u.volume = 1;
+            u.onerror = (e) => { console.warn('Erreur voix :', e.error); bip(); };
+            speechSynthesis.speak(u);
+        }, 80);
+    } catch (e) { bip(); }
 }
 
 function setupAudioToggle() {
+    if (voixOk) { choisirVoix(); speechSynthesis.onvoiceschanged = choisirVoix; }
+    majInfoVoix();
+    document.addEventListener('pointerdown', deverrouillerAudio, { once: true });
+    const railBtn = $('rail-toggle'), rail = $('rail-items');
+    if (railBtn && rail) {                      // barre de boutons repliable (mémorisée)
+        if (localStorage.getItem('gps_rail') === 'off') rail.classList.add('hidden');
+        railBtn.addEventListener('click', () => {
+            rail.classList.toggle('hidden');
+            localStorage.setItem('gps_rail', rail.classList.contains('hidden') ? 'off' : 'on');
+        });
+    }
     const btnMute = $('btn-mute');
     if (btnMute) btnMute.addEventListener('click', () => {
         isMuted = !isMuted;
         btnMute.innerText = isMuted ? '🔇' : '🔊';
+        majInfoVoix();
         parler(isMuted ? 'Guidage vocal désactivé' : 'Guidage vocal activé');
     });
     const btnStop = $('btn-stop');
@@ -151,6 +218,7 @@ function setupAudioToggle() {
 
 /* ---------- 3. RECHERCHE ---------- */
 async function rechercherDestination() {
+    if (suggestions.length) { choisirSuggestion(suggestions[0]); return; }   // Entrée = première suggestion
     const query = ($('search-input') || {}).value?.trim();
     if (!query) return;
     parler(`Recherche de ${query}`);
@@ -459,6 +527,144 @@ function majInfoSC() {
     } else el.innerText = `${scData.length} à proximité`;
 }
 
+/* ---------- 3 bis. SUGGESTIONS D'ADRESSE pendant la frappe (Mapbox Geocoding) ---------- */
+let suggestions = [], suggestTimer = null, suggestCtl = null;
+
+function setupSuggestions() {
+    const input = $('search-input'), box = $('search-suggest');
+    if (!input || !box) return;
+    input.addEventListener('input', () => {
+        clearTimeout(suggestTimer);
+        const q = input.value.trim();
+        if (q.length < 3) { cacherSuggestions(); return; }
+        suggestTimer = setTimeout(() => chercherSuggestions(q), 250);
+    });
+    input.addEventListener('keydown', (e) => { if (e.key === 'Escape') cacherSuggestions(); });
+    box.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-i]');
+        if (b) choisirSuggestion(suggestions[+b.dataset.i]);
+    });
+    document.addEventListener('click', (e) => { if (!e.target.closest('#search-wrap')) cacherSuggestions(); });
+}
+
+async function chercherSuggestions(q) {
+    const key = getApiKey('mapbox');
+    if (!key) return;
+    if (suggestCtl) suggestCtl.abort();
+    suggestCtl = new AbortController();
+    const prox = pos ? `&proximity=${pos.lon},${pos.lat}` : '';
+    try {
+        const r = await fetch(`https://api.mapbox.com/search/geocode/v6/forward?q=${encodeURIComponent(q)}&autocomplete=true&limit=5&language=fr${prox}&access_token=${key}`, { signal: suggestCtl.signal });
+        const j = await r.json();
+        suggestions = (j.features || []).map(f => {
+            const p = f.properties || {};
+            return { name: p.name_preferred || p.name || q,
+                label: p.full_address || [p.name, p.place_formatted].filter(Boolean).join(', '),
+                lon: f.geometry.coordinates[0], lat: f.geometry.coordinates[1] };
+        });
+        $('search-suggest').innerHTML = suggestions.map((x, i) =>
+            `<button data-i="${i}" class="w-full text-left px-4 py-3 text-sm hover:bg-gray-800 border-b border-gray-800 last:border-0 truncate">📍 ${escapeHtml(x.label)}</button>`).join('');
+        $('search-suggest').classList.toggle('hidden', !suggestions.length);
+    } catch (e) { if (e.name !== 'AbortError') console.warn('Erreur suggestions', e); }
+}
+
+function cacherSuggestions() {
+    clearTimeout(suggestTimer);
+    if (suggestCtl) suggestCtl.abort();
+    suggestions = [];
+    const box = $('search-suggest');
+    if (box) { box.classList.add('hidden'); box.innerHTML = ''; }
+}
+
+function choisirSuggestion(sg) {
+    if (!sg) return;
+    $('search-input').value = sg.label;
+    cacherSuggestions();
+    naviguerVers(sg.name, sg.lat, sg.lon);
+}
+
+/* ---------- 7 bis. WAZE (alertes communautaires via OpenWeb Ninja) ---------- */
+// Activable à tout moment avec le bouton 🚓 (pas seulement en guidage).
+// Rafraîchi toutes les 10 min tant que l'onglet est visible, pour ménager le quota.
+const WAZE_TYPES = { POLICE: ['🚓', 'Police'], ACCIDENT: ['💥', 'Accident'], HAZARD: ['⚠️', 'Danger'], ROAD_CLOSED: ['⛔', 'Route fermée'], JAM: ['🐢', 'Ralentissement'] };
+let wazeMarkers = [], wazeTimer = null, lastWaze = 0, wazeCount = 0;
+const wazeActif = () => localStorage.getItem('gps_waze') === 'on';
+
+function majBoutonWaze() {
+    const b = $('btn-waze');
+    if (b) b.style.boxShadow = wazeActif() ? '0 0 0 3px #33ccff' : '';
+    majInfoWaze();
+}
+
+function majInfoWaze(msg) {
+    const el = $('info-waze');
+    if (!el) return;
+    if (msg) { el.innerText = msg; el.className = 'font-semibold text-orange-500 text-right truncate'; return; }
+    if (!wazeActif()) { el.innerText = 'Désactivé'; el.className = 'font-semibold text-gray-500 text-right truncate'; return; }
+    el.innerText = lastWaze ? `${wazeCount} alertes · ${new Date(lastWaze).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}` : 'Chargement…';
+    el.className = 'font-semibold text-gray-900 dark:text-white text-right truncate';
+}
+
+function basculerWaze() {
+    if (!getApiKey('waze')) { alert("Ajoute ta clé OpenWeb Ninja (Waze) dans ⚙️ pour activer les alertes Waze."); return; }
+    if (wazeActif()) {
+        localStorage.setItem('gps_waze', 'off');
+        clearInterval(wazeTimer); wazeTimer = null;
+        wazeMarkers.forEach(m => m.remove()); wazeMarkers = []; wazeCount = 0;
+    } else {
+        localStorage.setItem('gps_waze', 'on');
+        demarrerWaze();
+        chargerWaze(true);
+    }
+    majBoutonWaze();
+}
+
+function demarrerWaze() {
+    clearInterval(wazeTimer);
+    wazeTimer = setInterval(() => chargerWaze(), 600000);   // toutes les 10 minutes
+}
+
+async function chargerWaze(force) {
+    const key = getApiKey('waze');
+    if (!wazeActif() || !key || !pos || !map) return;
+    if (document.visibilityState === 'hidden') return;
+    if (!force && Date.now() - lastWaze < 540000) return;
+    const pts = [[pos.lon, pos.lat]];
+    if (nav && nav.total - nav.along > 5000) pts.push(pointSurRoute(nav.along + 15000));   // une seule requête couvrant la route devant
+    const lons = pts.map(x => x[0]), lats = pts.map(x => x[1]);
+    const bl = `${Math.min(...lats) - 0.1},${Math.min(...lons) - 0.15}`, tr = `${Math.max(...lats) + 0.1},${Math.max(...lons) + 0.15}`;
+    lastWaze = Date.now();
+    try {
+        const r = await fetch(`https://api.openwebninja.com/waze/alerts-and-jams?bottom_left=${bl}&top_right=${tr}&max_alerts=200&max_jams=0`, { headers: { 'x-api-key': key } });
+        if (!r.ok) { majInfoWaze(r.status === 401 || r.status === 403 ? 'Clé refusée' : r.status === 429 ? 'Quota atteint' : `Erreur ${r.status}`); return; }
+        const j = await r.json();
+        afficherWaze((j.data && j.data.alerts) || []);
+    } catch (e) {
+        console.warn('Erreur Waze', e);
+        majInfoWaze('Bloqué par le navigateur (CORS ?)');
+    }
+}
+
+function afficherWaze(alerts) {
+    wazeMarkers.forEach(m => m.remove());
+    wazeMarkers = [];
+    alerts.forEach(a => {
+        const lat = a.latitude ?? a.lat ?? (a.location && a.location.y), lon = a.longitude ?? a.lon ?? a.lng ?? (a.location && a.location.x);
+        const type = String(a.type || '').toUpperCase(), def = WAZE_TYPES[type];
+        if (lat == null || lon == null || !def) return;
+        const age = Date.parse(a.publish_datetime_utc);
+        const detail = [def[1], a.description || (a.subtype ? String(a.subtype).replace(/_/g, ' ').toLowerCase() : ''), a.street,
+            isNaN(age) ? '' : `il y a ${Math.max(1, Math.round((Date.now() - age) / 60000))} min`, a.num_thumbs_up ? `👍 ${a.num_thumbs_up}` : ''].filter(Boolean).join(' · ');
+        const el = document.createElement('div');
+        el.textContent = def[0];
+        el.style.cssText = 'font-size:17px;background:#fff;border:3px solid #33ccff;border-radius:9px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.4);cursor:pointer';
+        wazeMarkers.push(new maplibregl.Marker({ element: el }).setLngLat([lon, lat])
+            .setPopup(new maplibregl.Popup({ offset: 16 }).setText(detail)).addTo(map));
+    });
+    wazeCount = wazeMarkers.length;
+    majInfoWaze();
+}
+
 /* ---------- 7. INCIDENTS (TomTom) ---------- */
 const CAT_INCIDENT = { 1: ['💥', 'Accident'], 2: ['🌫️', 'Brouillard'], 3: ['⚠️', 'Conditions dangereuses'], 4: ['🌧️', 'Pluie forte'],
     5: ['🧊', 'Verglas'], 6: ['🚗', 'Embouteillage'], 7: ['🚧', 'Voie fermée'], 8: ['⛔', 'Route fermée'], 9: ['🚧', 'Travaux'],
@@ -538,6 +744,7 @@ async function chargerClesApiFirestore() {
             if (keys.tomtom) localStorage.setItem('api_key_tomtom', keys.tomtom);
             if (keys.openweather) localStorage.setItem('api_key_openweather', keys.openweather);
             if (keys.mapbox) localStorage.setItem('api_key_mapbox', keys.mapbox);
+            if (keys.waze) localStorage.setItem('api_key_waze', keys.waze);
         }
     } catch (e) {
         console.warn("Chargement clés Firestore ignoré (mode local)", e);
@@ -569,6 +776,10 @@ function openApiModal() {
                         <label class="font-semibold text-gray-700 dark:text-gray-300">Mapbox (Itinéraire &amp; guidage)</label>
                         <input type="password" id="key-mapbox" class="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white outline-none">
                     </div>
+                    <div class="flex flex-col gap-1">
+                        <label class="font-semibold text-gray-700 dark:text-gray-300">Waze via OpenWeb Ninja (alertes police, accidents…)</label>
+                        <input type="password" id="key-waze" class="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white outline-none">
+                    </div>
                 </div>
                 <div class="flex gap-2 mt-2">
                     <button onclick="document.getElementById('api-modal').remove()" class="flex-1 bg-gray-200 dark:bg-gray-800 py-2 rounded-lg text-xs font-semibold">Annuler</button>
@@ -583,17 +794,20 @@ function openApiModal() {
     document.getElementById('key-tomtom').value = getApiKey('tomtom');
     document.getElementById('key-openweather').value = getApiKey('openweather');
     document.getElementById('key-mapbox').value = getApiKey('mapbox');
+    document.getElementById('key-waze').value = getApiKey('waze');
 }
 
 async function saveApiKeys() {
     const tomtom = document.getElementById('key-tomtom').value.trim();
     const openweather = document.getElementById('key-openweather').value.trim();
     const mapbox = document.getElementById('key-mapbox').value.trim();
+    const waze = document.getElementById('key-waze').value.trim();
 
     // 1. Sauvegarde locale
     localStorage.setItem('api_key_tomtom', tomtom);
     localStorage.setItem('api_key_openweather', openweather);
     localStorage.setItem('api_key_mapbox', mapbox);
+    localStorage.setItem('api_key_waze', waze);
 
     // 2. Sauvegarde Cloud sur Firestore
     try {
@@ -601,7 +815,8 @@ async function saveApiKeys() {
             await db.collection("dashboards").doc("justin_api_keys").set({
                 tomtom: tomtom,
                 openweather: openweather,
-                mapbox: mapbox
+                mapbox: mapbox,
+                waze: waze
             }, { merge: true });
             console.log("Clés API sauvegardées dans Firestore !");
         }
